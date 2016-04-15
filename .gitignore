@@ -31,7 +31,7 @@
 # Debug files
 *.dSYM/
 
-
+Makefile
 .metadata
 bin/
 tmp/

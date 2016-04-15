@@ -38,19 +38,26 @@
 /* Definition of Task Stacks */
 #define   TASK_STACKSIZE       2048
 OS_STK    task1_stk[TASK_STACKSIZE];
+
+
+
+/* Display stuff */
 alt_up_pixel_buffer_dma_dev *pixel_buffer_dev;
 short buffer[512][256];
+alt_up_char_buffer_dev *char_buffer_dev;
 
 
 /* Definition of Task Priorities */
 
 #define TASK1_PRIORITY      1
+int clear_text_buffer(alt_up_char_buffer_dev *char_buffer);
 
 /* Prints "Hello World" and sleeps for three seconds */
 void task1(void* pdata)
 {
 	OSTimeDlyHMSM(0,0,5,0);
-    alt_up_pixel_buffer_dma_draw_box(pixel_buffer_dev, 34*4, 28*4, 50*4, 32*4, 0xFE99, 0);
+    alt_up_pixel_buffer_dma_draw_box(pixel_buffer_dev, 34*4, 28*4, 50*4, 32*4, 0x001F, 0);
+	alt_up_char_buffer_string (char_buffer_dev, "Test\0", 35, 29);
     OSTaskDel(OS_PRIO_SELF);
 }
 /* Prints "Hello World" and sleeps for three seconds */
@@ -88,6 +95,21 @@ int main(void)
 
   OSStart();
   return 0;
+}
+int clear_text_buffer(alt_up_char_buffer_dev *char_buffer) {
+	// boundary check
+	//7632 is the size of the character buffer for whatever reason
+	alt_u8 cnt = 0;
+	alt_u8 i = 0;
+
+	for ( cnt=0;cnt< char_buffer->y_resolution; cnt++)
+	{
+		for(i=0;i<char_buffer->x_resolution;i++)
+		{
+			IOWR_8DIRECT(char_buffer->buffer_base, (cnt<<7)+i, ' ');
+		}
+	}
+	return 0;
 }
 
 /******************************************************************************
