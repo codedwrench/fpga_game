@@ -46,6 +46,7 @@ local.properties
 # External tool builders
 .externalToolBuilders/
 *_bsp/
+create-this-app
 # Locally stored "Eclipse launch configurations"
 *.launch
 
