@@ -36,6 +36,7 @@ Makefile
 bin/
 tmp/
 *.tmp
+readme.txt
 *.bak
 *.swp
 *~.nib
@@ -47,6 +48,11 @@ local.properties
 .externalToolBuilders/
 *_bsp/
 create-this-app
+*.objdump
+*.map
+obj/
+.settings/
+
 # Locally stored "Eclipse launch configurations"
 *.launch
 
