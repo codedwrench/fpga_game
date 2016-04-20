@@ -2,9 +2,9 @@
  * system.h - SOPC Builder system and BSP software package information
  *
  * Machine generated for CPU 'Nios2' in SOPC Builder design 'nios_system'
- * SOPC Builder design path: /home/codedwrench/altera_lite/15.1/University_Program/Computer_Systems/DE2-115/DE2-115_Media_Computer/verilog/nios_system.sopcinfo
+ * SOPC Builder design path: /mnt/ssddata/altera_lite/15.1/University_Program/Computer_Systems/DE2-115/DE2-115_Media_Computer/verilog/nios_system.sopcinfo
  *
- * Generated: Fri Apr 15 10:50:50 CEST 2016
+ * Generated: Tue Apr 19 17:21:44 CEST 2016
  */
 
 /*

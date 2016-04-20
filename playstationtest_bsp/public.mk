@@ -86,11 +86,11 @@ ACDS_VERSION := 15.1
 
 # Quartus Generated JDI File. Required for resolving node instance ID's with 
 # design component names. 
-JDI_FILE := /home/codedwrench/altera_lite/15.1/University_Program/Computer_Systems/DE2-115/DE2-115_Media_Computer/verilog/DE2_115_Media_Computer.jdi
+JDI_FILE := /mnt/ssddata/altera_lite/15.1/University_Program/Computer_Systems/DE2-115/DE2-115_Media_Computer/verilog/DE2_115_Media_Computer.jdi
 
 # Qsys--generated SOPCINFO file. Required for resolving node instance ID's with 
 # design component names. 
-SOPCINFO_FILE := /home/codedwrench/altera_lite/15.1/University_Program/Computer_Systems/DE2-115/DE2-115_Media_Computer/verilog/nios_system.sopcinfo
+SOPCINFO_FILE := /mnt/ssddata/altera_lite/15.1/University_Program/Computer_Systems/DE2-115/DE2-115_Media_Computer/verilog/nios_system.sopcinfo
 
 # Big-Endian operation. 
 # setting BIG_ENDIAN is false

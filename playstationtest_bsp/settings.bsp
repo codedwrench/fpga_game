@@ -2,11 +2,11 @@
 <sch:Settings xmlns:sch="http://www.altera.com/embeddedsw/bsp/schema">
         <BspType>ucosii</BspType>
         <BspVersion>default</BspVersion>
-        <BspGeneratedTimeStamp>Apr 15, 2016 10:50:48 AM</BspGeneratedTimeStamp>
-        <BspGeneratedUnixTimeStamp>1460710248697</BspGeneratedUnixTimeStamp>
-        <BspGeneratedLocation>/home/codedwrench/Dropbox/school/nios/ucoshello_bsp</BspGeneratedLocation>
-        <BspSettingsFile>./settings.bsp</BspSettingsFile>
-        <SopcDesignFile>/home/codedwrench/altera_lite/15.1/University_Program/Computer_Systems/DE2-115/DE2-115_Media_Computer/verilog/nios_system.sopcinfo</SopcDesignFile>
+        <BspGeneratedTimeStamp>Apr 19, 2016 5:21:43 PM</BspGeneratedTimeStamp>
+        <BspGeneratedUnixTimeStamp>1461079303368</BspGeneratedUnixTimeStamp>
+        <BspGeneratedLocation>/home/codedwrench/Dropbox/school/nios/displaytest2eneenhalf_bsp</BspGeneratedLocation>
+        <BspSettingsFile>settings.bsp</BspSettingsFile>
+        <SopcDesignFile>/mnt/ssddata/altera_lite/15.1/University_Program/Computer_Systems/DE2-115/DE2-115_Media_Computer/verilog/nios_system.sopcinfo</SopcDesignFile>
         <JdiFile>default</JdiFile>
         <Cpu>Nios2</Cpu>
         <SchemaVersion>1.9</SchemaVersion>

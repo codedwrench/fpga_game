@@ -3,9 +3,9 @@
 # This script creates the hello_ucosii application in this directory.
 
 
-BSP_DIR=/home/codedwrench/Dropbox/school/nios/ucoshello_bsp/
-QUARTUS_PROJECT_DIR=/home/codedwrench/altera_lite/15.1/University_Program/Computer_Systems/DE2-115/DE2-115_Media_Computer/verilog/
-NIOS2_APP_GEN_ARGS="--elf-name ucoshello.elf --set OBJDUMP_INCLUDE_SOURCE 1 --src-files hello_ucosii.c"
+BSP_DIR=/home/codedwrench/Dropbox/school/nios/displaytest2eneenhalf_bsp/
+QUARTUS_PROJECT_DIR=/mnt/ssddata/altera_lite/15.1/University_Program/Computer_Systems/DE2-115/DE2-115_Media_Computer/verilog/
+NIOS2_APP_GEN_ARGS="--elf-name displaytest2eneenhalf.elf --set OBJDUMP_INCLUDE_SOURCE 1 --src-files hello_ucosii.c"
 
 
 # First, check to see if $SOPC_KIT_NIOS2 environmental variable is set.
