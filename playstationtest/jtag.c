@@ -25,7 +25,7 @@ int main(void)
 	volatile int * JTAG_UART_ptr 	= (int *) JTAG_UART_BASE;	// JTAG UART address
 
 	int data, i;
-	char cmd[4];
+	char cmd[3];
 
 	for (i = 0; i < sizeof(cmd)/sizeof(cmd[0]); i++)
 	{
@@ -42,11 +42,25 @@ int main(void)
 			data = data & 0x000000FF;			// the data is in the least significant byte
 			/* echo the character */
 			cmd[i] = put_jtag (JTAG_UART_ptr, (char) data);
-			printf("\ncmd[%i]: %c\n", i, cmd[i]);
+//			printf("\ncmd[%i]: %c\n", i, cmd[i]);
 			if (i < 2)
 				i++;
 			else
 				i = 0;
+		}
+		if (cmd[0] != 0 && cmd[1] != 0 && cmd[2] != 0)
+		{
+			printf("\n");
+			for (i = 0; i < sizeof(cmd)/sizeof(cmd[0]); i++)
+			{
+				printf("%c", cmd[i]);
+			}
+			printf("\n");
+			for (i = 0; i < sizeof(cmd)/sizeof(cmd[0]); i++)
+			{
+				cmd[i] = 0;
+			}
+			i = 0;
 		}
 	}
 }
