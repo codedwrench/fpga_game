@@ -98,8 +98,8 @@ void task1(void* pdata)
 			i = 0;
 		}
 		i++;
+		wait_for_vsync(buffer_register,dma_control);
 		OSTimeDly(1);
-		//wait_for_vsync(buffer_register,dma_control);
 	}
 }
 void task2(void* pdata)
