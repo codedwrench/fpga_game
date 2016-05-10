@@ -132,8 +132,10 @@ while True:
                     elif(fvalue == 0 and axis == 'x'):
                         #print "1lr"
                         process.stdin.write("1lr")
+                        process.stdin.write("1rr")
                     elif(fvalue == 0 and axis == 'y'):
                         #print "1gr"
                         process.stdin.write("1gr")
+                        process.stdin.write("1hr")
 
 

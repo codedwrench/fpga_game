@@ -4,8 +4,7 @@
 /* Declare volatile pointers to I/O registers (volatile means that IO load
 	   and store instructions will be used to access these pointer locations,
 	   instead of regular memory loads and stores) */
-volatile int * JTAG_UART_ptr 	= (int *) JTAG_UART_BASE;	// JTAG UART address
-volatile int * RED_LED_ptr 		= (int *) RED_LED_BASE;		// RED LED address
+
 
 /********************************************************************************
  * Controller codes are formatted in the following way:

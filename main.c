@@ -31,73 +31,28 @@
 #include <stdio.h>
 #include "includes.h"
 #include <alt_types.h>
-#include <os/alt_sem.h>
 #include "graphicslib.h"
 #include "address_map_nios2.h"
-#define BUF_SIZE 5000000			// about 10 seconds of buffer (@ 48K samples/sec)
-#define BUF_THRESHOLD 96		// 75% of 128 word buffer
 
-volatile short  * pixel_buffer_start = (short *) 0x08000000;
-volatile short * buffer_register = (short *) 0x10003060;
-volatile short * dma_control = (short *) 0x1000306C;
-volatile char * character_buffer = (char *) 0x09000000;
-volatile int * audio_ptr = (int *) 0x10003040;			// audio port address
-int left_buffer[BUF_SIZE];
-int right_buffer[BUF_SIZE];
-volatile int * RED_LED_ptr 		= (int *) RED_LED_BASE;		// RED LED address
+
+volatile short  * pixel_buffer_start = (short *) VGA_PIXEL_BUFFER_START_BASE;
+volatile short * buffer_register = (short *) VGA_PIXEL_BUFFER_CONTROL_REGISTER_BASE;
+volatile short * dma_control = (short *) VGA_DMA_CONTROLLER_BASE;
+volatile char * character_buffer = (char *) VGA_CHAR_BUFFER_BASE;
 volatile int * JTAG_UART_ptr 	= (int *) JTAG_UART_BASE;	// JTAG UART address
-int fifospace, leftdata, rightdata;
+volatile int * RED_LED_ptr 		= (int *) RED_LED_BASE;		// RED LED address
 
 /* Definition of Task Stacks */
 #define   TASK_STACKSIZE       2048
 OS_STK    task1_stk[TASK_STACKSIZE];
 OS_STK    task2_stk[TASK_STACKSIZE];
-OS_STK    getcontrols_stk[TASK_STACKSIZE];
-ALT_SEM(display)
-ALT_SEM(audio)
-
 
 /* Definition of Task Priorities */
-#define TASK1_PRIORITY      6
-#define TASK2_PRIORITY      5
-#define GETCONTROLS_PRIORITY      7
+#define TASK1_PRIORITY      2
+#define TASK2_PRIORITY      1
 
-void playtone(int height,int time)
-{
-
-
-		signed long high = 2147483392;
-		signed long low = -2147483648;
-		int  buffer_index = 0;
-		fifospace = 0;
-		int i = 0;
-			for( i = 0; i<time*10000;i++)
-			{
-
-				if(buffer_index < height)
-				{
-				*(audio_ptr + 2) = high;
-				*(audio_ptr + 3) = high;
-				}
-				else if (buffer_index > height)
-				{
-					*(audio_ptr + 2) = low;
-					*(audio_ptr + 3) = low;
-				}
-				if(buffer_index == 1+height*2)
-				{
-					buffer_index = 0;
-				}
-
-
-				++buffer_index;
-
-			}
-
-}
 void task1(void* pdata)
 {
-	ALT_SEM_PEND(display,0);
 
 	OSTimeDly(1);
 	volatile short * pixel_ctrl_ptr = (volatile short *) pdata;
@@ -149,7 +104,6 @@ void task1(void* pdata)
 		i++;
 		wait_for_vsync(buffer_register,dma_control);
 		OSTimeDly(1);
-		ALT_SEM_POST(display);
 	}
 }
 void task2(void* pdata)
@@ -159,9 +113,9 @@ void task2(void* pdata)
 	OSTaskDel(OS_PRIO_SELF);
 
 }
+
 void getcontrols(void *pdata)
 {
-
 	int data, i;
 	char cmd[3];
 
@@ -182,8 +136,6 @@ void getcontrols(void *pdata)
 
 			while ((char) data == '1' || (char) data == '2')
 			{
-				OSTimeDly(1);
-
 				cmd[0] = data;
 				data = *(JTAG_UART_ptr);		 		// read the JTAG_UART data register
 				if (data & 0x00008000)					// check RVALID to see if there is new data
@@ -191,8 +143,6 @@ void getcontrols(void *pdata)
 					data = data & 0x000000FF;			// the data is in the least significant byte
 					while (1)
 					{
-						OSTimeDly(1);
-
 						cmd[1] = data;
 						data = *(JTAG_UART_ptr);		 		// read the JTAG_UART data register
 						if (data & 0x00008000)					// check RVALID to see if there is new data
@@ -200,8 +150,6 @@ void getcontrols(void *pdata)
 							data = data & 0x000000FF;			// the data is in the least significant byte
 							while ((char) data == 'r' || (char) data == 'p')
 							{
-								OSTimeDly(1);
-
 								cmd[2] = data;
 								break;
 							}
@@ -213,103 +161,18 @@ void getcontrols(void *pdata)
 			}
 			if (cmd[0] != 0 && cmd[1] != 0 && cmd[2] != 0)
 			{
-				ALT_SEM_PEND(display,0);
-
-				//		printf("\n");
-				//		for (i = 0; i < sizeof(cmd)/sizeof(cmd[0]); i++)
-				//		{
-				//			printf("%c", cmd[i]);
-				//		}
-				//		printf("\n");
-				alt_u16 x;
-				alt_u8 y;
-				switch(cmd[1])
-				{
-				case 'd':
-					x = 81;
-					y= 66;
-					break;
-				case 'c':
-					x = 81;
-					y = 81;
-					break;
-				case 'e':
-					x = 216;
-					y = 66;
-					break;
-				case  'z':
-					x = 216;
-					y = 81;
-					break;
-				case 'h':
-					x = 81;
-					y = 104;
-					break;
-				case 'g':
-					x = 81;
-					y = 134;
-					break;
-				case 'l':
-					x = 65;
-					y = 118;
-					break;
-				case 'r':
-					x = 96;
-					y= 118;
-					break;
-				case 'f':
-					x = 133;
-					y= 118;
-					break;
-				case 's':
-					x = 163;
-					y = 118;
-					break;
-				case 'y':
-					x = 216;
-					y = 102;
-					break;
-				case 'x':
-					x = 201;
-					y = 117;
-					break;
-				case 'b':
-					x = 231;
-					y = 117;
-					break;
-				case 'a':
-					x = 216;
-					y = 132;
-					break;
-				default:
-					x = 0;
-					y = 0;
-					break;
-
-
-				}
-
-
+				//			printf("\n");
+				//			for (i = 0; i < sizeof(cmd)/sizeof(cmd[0]); i++)
+				//			{
+				//				printf("%c", cmd[i]);
+				//			}
+				//			printf("\n");
 				switch(cmd[2])
 				{
 				case 'p':
-					drawrectangle(pixel_buffer_start,x,y,8,8,0xFFFF);
-					int i;
-					int err;
-					playtone(5000,10);
-					playtone(8000,10);
-					playtone(5000,10);
-
-
-
-
-
-
-
 					*(RED_LED_ptr) = (1<<3);
 					break;
 				case 'r':
-					drawrectangle(pixel_buffer_start,x,y,8,8,0x0000);
 					*(RED_LED_ptr) = (0<<3);
 					break;
 				}
@@ -320,23 +183,14 @@ void getcontrols(void *pdata)
 				i = 0;
 			}
 			OSTimeDly(1);
-			ALT_SEM_POST(display);
-
 		}
 	}
 }
-
 int main(void)
 {
 	OSInit();
 	volatile short * pixel_ctrl_ptr = pixel_buffer_start;
 	volatile char * char_ctrl_ptr = character_buffer;
-	int err = ALT_SEM_CREATE(&display,1);
-	if(err != 0)
-		printf("Semaphore not created\n");
-	 err = ALT_SEM_CREATE(&audio,1);
-	if(err != 0)
-		printf("Semaphore not created\n");
 
 	*(dma_control) &= (1<<2); //Enable DMA controller
 
@@ -365,16 +219,6 @@ int main(void)
 			TASK2_PRIORITY,
 			TASK2_PRIORITY,
 			task2_stk,
-			TASK_STACKSIZE,
-			NULL,
-			0);
-
-	OSTaskCreateExt(getcontrols,
-			char_ctrl_ptr,
-			(void *)&getcontrols_stk[TASK_STACKSIZE-1],
-			GETCONTROLS_PRIORITY,
-			GETCONTROLS_PRIORITY,
-			getcontrols_stk,
 			TASK_STACKSIZE,
 			NULL,
 			0);
