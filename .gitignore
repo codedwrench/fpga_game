@@ -54,7 +54,7 @@ create-this-app
 *.map
 obj/
 .settings/
-
+*.xlsx
 # Locally stored "Eclipse launch configurations"
 *.launch
 
