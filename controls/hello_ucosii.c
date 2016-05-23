@@ -47,10 +47,10 @@ int right_buffer[BUF_SIZE];
 volatile int * RED_LED_ptr 		= (int *) RED_LED_BASE;		// RED LED address
 volatile int * JTAG_UART_ptr 	= (int *) JTAG_UART_BASE;	// JTAG UART address
 int fifospace, leftdata, rightdata;
-unsigned int playerx = 0;
-unsigned int playery = 0;
-unsigned char py;
-unsigned char px;
+unsigned int player1x = 0;
+unsigned int player1y = 0;
+unsigned char p1y;
+unsigned char p1x;
 
 
 /* Definition of Task Stacks */
@@ -114,26 +114,29 @@ void task1(void* pdata)
 	{
 		wait_for_vsync(buffer_register,dma_control);
 		OSTimeDly(10);
-		if(py == 1)
+		if(p1y == 1)
 		{
-			playery++;
+			player1y++;
 		}
-		else if(py == 2)
+		else if(p1y == 2)
 		{
-			if(playery > 0)
-				playery--;
+			if(player1y > 0)
+				player1y--;
 		}
-		if(px == 1)
+		if(p1x == 1)
 		{
-			playerx++;
+			player1x++;
 		}
-		else if(px ==2 )
+		else if(p1x ==2 )
 		{
-			if(playerx > 0)
-				playerx--;
+			if(player1x > 0)
+				player1x--;
 		}
-		drawrectangle( pixel_buffer_start,playerx-1,playery-1,7,7,0);
-		drawrectangle( pixel_buffer_start,playerx,playery,5,5,0xFFFF);
+
+		// Draw player
+		drawrectangle( pixel_buffer_start,player1x-1,player1y-1,7,7,0);
+		drawrectangle( pixel_buffer_start,player1x,player1y,5,5,0xFFFF);
+
 		ALT_SEM_POST(player);
 	}
 }
@@ -218,41 +221,41 @@ void getcontrols(void *pdata)
 				case 'g':
 					if(cmd[2] != 'r')
 					{
-						py = 1;
+						p1y = 1;
 					}
 					else
 					{
-						py = 0;
+						p1y = 0;
 					}
 					break;
 				case 'h':
 					if(cmd[2] != 'r')
 					{
-						py = 2;
+						p1y = 2;
 					}
 					else
 					{
-						py = 0;
+						p1y = 0;
 					}
 					break;
 				case 'l':
 					if(cmd[2] != 'r')
 					{
-						px = 2;
+						p1x = 2;
 					}
 					else
 					{
-						px =0;
+						p1x =0;
 					}
 					break;
 				case 'r':
 					if(cmd[2] != 'r')
 					{
-						px = 1;
+						p1x = 1;
 					}
 					else
 					{
-						px = 0;
+						p1x = 0;
 					}
 					break;
 				case 'f':
