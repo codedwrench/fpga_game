@@ -25,7 +25,7 @@ for i in range( joystick_count ): #initialization
     numaxes[i] = joystick[i].get_numaxes() 
     print "Number of axes = " + str(numaxes[i])
     for cnt in range( numaxes[i] ):
-        if(i > 0): #when it's on the second joystick it should put the values higer in the array
+        if(i > 0): #when it's on the second joystick it should put the values higher in the array
             axis[cnt + numaxes[i-1]] = joystick[i].get_axis(cnt)
             trippedaxes[cnt + numaxes[i-1]] = 0;
         else:
