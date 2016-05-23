@@ -15,6 +15,7 @@ axis = {}
 numbuttons = {}
 buttons = {}
 pressed = {}
+trippedaxes = {}
 
 for i in range( joystick_count ): #initialization
     joystick[i] = pygame.joystick.Joystick(i)
@@ -26,8 +27,10 @@ for i in range( joystick_count ): #initialization
     for cnt in range( numaxes[i] ):
         if(i > 0): #when it's on the second joystick it should put the values higer in the array
             axis[cnt + numaxes[i-1]] = joystick[i].get_axis(cnt)
+            trippedaxes[cnt + numaxes[i-1]] = 0;
         else:
             axis[cnt] = joystick[i].get_axis(cnt)
+            trippedaxes[cnt] = 0;
 
     numbuttons[i] = joystick[i].get_numbuttons()
     print "Number of buttons = " + str(numbuttons[i])
@@ -47,19 +50,56 @@ while 1:
         if event.type == pygame.JOYBUTTONDOWN: #User pressed a button
             for i in range(numbuttons[0]): #It's on controller 1
                 if(joystick[0].get_button(i) == 1):
-                    print "1" + str(i) + "p"
+                    process.stdin.write( "1" + str(i) + "p")
                     pressed[i] = 1;
 
             for i in range(numbuttons[1]): #It's on controller 2
                 if(joystick[1].get_button(i) == 1):
-                    print "2" + str(i) + "p"
+                    process.stdin.write( "2" + str(i) + "p")
                     pressed[i + numbuttons[0]] = 1
 
         if event.type == pygame.JOYBUTTONUP: #User released a button
             for i in range(numbuttons[0]):
                 if(joystick[0].get_button(i) == 0 and pressed[i] == 1):
-                    print "1" + str(i) + "r"
+                    process.stdin.write( "1" + str(i) + "r")
 
             for i in range(numbuttons[1]):
                 if(joystick[1].get_button(i) == 0 and pressed[i + numbuttons[0]] == 1):
-                    print "2" + str(i) + "r"
+                    process.stdin.write( "2" + str(i) + "r")
+
+        if event.type == pygame.JOYAXISMOTION: #An axis is handled differently
+            for i in range(len(joystick)):   
+                if(joystick[i].get_axis(0) > 0.9): #left and right
+                    process.stdin.write(  str(i+1) + "rp")
+                    if(i > 0):
+                        trippedaxes[2] = 1
+                    else:
+                        trippedaxes[0] = 1;
+                elif(joystick[i].get_axis(0) < -0.9):
+                    process.stdin.write( str(i+1) + "lp")
+                    if(i > 0):
+                        trippedaxes[2] = 1
+                    else:
+                        trippedaxes[0] = 1;
+                elif((trippedaxes[0] == 1 and i == 0) or (trippedaxes[2] == 1 and i >0) and joystick[i].get_axis(0) == 0):
+                    trippedaxes[0] = 0;
+                    trippedaxes[2] = 0;
+                    process.stdin.write( str(i+1) + "lr")
+
+
+                if(joystick[i].get_axis(1) > 0.9): #up and down
+                    process.stdin.write(  str(i+1) + "gp")
+                    if(i > 0):
+                        trippedaxes[3] = 1
+                    else:
+                        trippedaxes[1] = 1;
+                elif(joystick[i].get_axis(1) < -0.9):
+                    process.stdin.write( str(i+1) + "hp")
+                    if(i > 0):
+                        trippedaxes[3] = 1
+                    else:
+                        trippedaxes[1] = 1;
+                elif((trippedaxes[1] == 1 and i == 0) or (trippedaxes[3] == 1 and i >0) and joystick[i].get_axis(1) == 0):
+                    trippedaxes[1] = 0;
+                    trippedaxes[3] = 0;
+                    process.stdin.write( str(i+1) + "hr")
