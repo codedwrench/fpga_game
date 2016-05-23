@@ -1,6 +1,8 @@
 import pygame
 import time
 
+from subprocess import Popen, PIPE
+process = Popen(["/mnt/ssddata/altera_lite/15.1/quartus/bin/nios2-terminal","--instance","0"],stdin=PIPE)
 pygame.init()
 pygame.joystick.init()
 joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
