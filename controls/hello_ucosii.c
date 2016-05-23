@@ -113,7 +113,7 @@ void task1(void* pdata)
 	while(1)
 	{
 		wait_for_vsync(buffer_register,dma_control);
-		OSTimeDly(30);
+		OSTimeDly(10);
 		if(py == 1)
 		{
 			playery++;
@@ -132,6 +132,7 @@ void task1(void* pdata)
 			if(playerx > 0)
 				playerx--;
 		}
+		drawrectangle( pixel_buffer_start,playerx-1,playery-1,7,7,0);
 		drawrectangle( pixel_buffer_start,playerx,playery,5,5,0xFFFF);
 		ALT_SEM_POST(player);
 	}
