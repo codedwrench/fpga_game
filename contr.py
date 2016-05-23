@@ -2,7 +2,7 @@ import pygame
 import time
 
 from subprocess import Popen, PIPE
-process = Popen(["/mnt/ssddata/altera_lite/15.1/quartus/bin/nios2-terminal","--instance","0"],stdin=PIPE)
+process = Popen(["C:\\altera_lite\\15.1\\quartus\\bin64\\nios-monitor-terminal.exe","1","0"],stdin=PIPE)
 pygame.init()
 pygame.joystick.init()
 joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
@@ -50,56 +50,57 @@ while 1:
         if event.type == pygame.JOYBUTTONDOWN: #User pressed a button
             for i in range(numbuttons[0]): #It's on controller 1
                 if(joystick[0].get_button(i) == 1):
-                    process.stdin.write( "1" + str(i) + "p")
+                    process.stdin.write( "1" + str(i) + "p\n")
                     pressed[i] = 1;
 
             for i in range(numbuttons[1]): #It's on controller 2
                 if(joystick[1].get_button(i) == 1):
-                    process.stdin.write( "2" + str(i) + "p")
+                    process.stdin.write( "2" + str(i) + "p\n")
                     pressed[i + numbuttons[0]] = 1
 
         if event.type == pygame.JOYBUTTONUP: #User released a button
             for i in range(numbuttons[0]):
                 if(joystick[0].get_button(i) == 0 and pressed[i] == 1):
-                    process.stdin.write( "1" + str(i) + "r")
+                    process.stdin.write( "1" + str(i) + "r\n")
 
             for i in range(numbuttons[1]):
                 if(joystick[1].get_button(i) == 0 and pressed[i + numbuttons[0]] == 1):
-                    process.stdin.write( "2" + str(i) + "r")
+                    process.stdin.write( "2" + str(i) + "r\n")
 
         if event.type == pygame.JOYAXISMOTION: #An axis is handled differently
             for i in range(len(joystick)):   
                 if(joystick[i].get_axis(0) > 0.9): #left and right
-                    process.stdin.write(  str(i+1) + "rp")
+                    process.stdin.write(  str(i+1) + "rp\n")
                     if(i > 0):
                         trippedaxes[2] = 1
                     else:
                         trippedaxes[0] = 1;
                 elif(joystick[i].get_axis(0) < -0.9):
-                    process.stdin.write( str(i+1) + "lp")
+                    process.stdin.write( str(i+1) + "lp\n")
                     if(i > 0):
                         trippedaxes[2] = 1
                     else:
                         trippedaxes[0] = 1;
-                elif((trippedaxes[0] == 1 and i == 0) or (trippedaxes[2] == 1 and i >0) and joystick[i].get_axis(0) == 0):
+                elif((trippedaxes[0] == 1 and i == 0) or (trippedaxes[2] == 1 and i >0) and (joystick[i].get_axis(0) > -0.1 and joystick[i].get_axis(0) < 0.1)):
                     trippedaxes[0] = 0;
                     trippedaxes[2] = 0;
-                    process.stdin.write( str(i+1) + "lr")
+                    process.stdin.write( str(i+1) + "lr\n")
 
 
                 if(joystick[i].get_axis(1) > 0.9): #up and down
-                    process.stdin.write(  str(i+1) + "gp")
+                    process.stdin.write(  str(i+1) + "gp\n")
+
                     if(i > 0):
                         trippedaxes[3] = 1
                     else:
                         trippedaxes[1] = 1;
                 elif(joystick[i].get_axis(1) < -0.9):
-                    process.stdin.write( str(i+1) + "hp")
+                    process.stdin.write( str(i+1) + "hp\n")
                     if(i > 0):
                         trippedaxes[3] = 1
                     else:
                         trippedaxes[1] = 1;
-                elif((trippedaxes[1] == 1 and i == 0) or (trippedaxes[3] == 1 and i >0) and joystick[i].get_axis(1) == 0):
+                elif((trippedaxes[1] == 1 and i == 0) or (trippedaxes[3] == 1 and i >0) and (joystick[i].get_axis(1) > -0.1 and joystick[i].get_axis(1) < 0.1)):
                     trippedaxes[1] = 0;
                     trippedaxes[3] = 0;
-                    process.stdin.write( str(i+1) + "hr")
+                    process.stdin.write( str(i+1) + "hr\n")

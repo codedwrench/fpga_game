@@ -113,7 +113,7 @@ void task1(void* pdata)
 	while(1)
 	{
 		wait_for_vsync(buffer_register,dma_control);
-		OSTimeDly(3);
+		OSTimeDly(30);
 		if(py == 1)
 		{
 			playery++;
