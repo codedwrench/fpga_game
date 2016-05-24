@@ -36,6 +36,8 @@
 #include "address_map_nios2.h"
 #define BUF_SIZE 5000000			// about 10 seconds of buffer (@ 48K samples/sec)
 #define BUF_THRESHOLD 96		// 75% of 128 word buffer
+#define PLAYER_SIZE 5
+#define SPLITSCREEN_WIDTH 10
 
 volatile short  * pixel_buffer_start = (short *) 0x08000000;
 volatile short * buffer_register = (short *) 0x10003060;
@@ -47,10 +49,16 @@ int right_buffer[BUF_SIZE];
 volatile int * RED_LED_ptr 		= (int *) RED_LED_BASE;		// RED LED address
 volatile int * JTAG_UART_ptr 	= (int *) JTAG_UART_BASE;	// JTAG UART address
 int fifospace, leftdata, rightdata;
-unsigned int player1x = 0;
-unsigned int player1y = 0;
+unsigned int player1x = 320/4;
+unsigned int player1y = 10;
 unsigned char p1y;
 unsigned char p1x;
+unsigned int player2x = (320/4)*3;
+unsigned int player2y = 10;
+unsigned char p2y;
+unsigned char p2x;
+unsigned char playerWidth = 5;
+
 
 
 /* Definition of Task Stacks */
@@ -116,36 +124,72 @@ void task1(void* pdata)
 		OSTimeDly(10);
 		if(p1y == 1)
 		{
-			player1y++;
+			if (player1y < 240-PLAYER_SIZE-2)
+				player1y++;
 		}
 		else if(p1y == 2)
 		{
-			if(player1y > 0)
+			if(player1y > 2)
 				player1y--;
 		}
 		if(p1x == 1)
 		{
-			player1x++;
+			if(player1x < 320-PLAYER_SIZE-2)
+				player1x++;
 		}
-		else if(p1x ==2 )
+		else if(p1x == 2)
 		{
-			if(player1x > 0)
+			if(player1x > 2)
 				player1x--;
 		}
 
 		// Draw player
-		drawrectangle( pixel_buffer_start,player1x-1,player1y-1,7,7,0);
-		drawrectangle( pixel_buffer_start,player1x,player1y,5,5,0xFFFF);
+		drawrectangle( pixel_buffer_start, player1x-1, player1y-1, PLAYER_SIZE+2, PLAYER_SIZE+2, 0);
+		drawrectangle( pixel_buffer_start, player1x, player1y, PLAYER_SIZE, PLAYER_SIZE, 0xFFFF);
 
 		ALT_SEM_POST(player);
 	}
 }
 void task2(void* pdata)
 {
+	ALT_SEM_PEND(player,0);
 
-	drawtext((volatile char* )pdata, "FPGA_GAME\0" ,36, 10);
-	OSTaskDel(OS_PRIO_SELF);
+		OSTimeDly(1);
+		volatile short * pixel_ctrl_ptr = (volatile short *) pdata;
 
+		int i=0;
+
+		while(1)
+		{
+			wait_for_vsync(buffer_register,dma_control);
+			OSTimeDly(10);
+			if(p2y == 1)
+			{
+				if (player2y < 240-PLAYER_SIZE-2)
+					player2y++;
+			}
+			else if(p2y == 2)
+			{
+				if(player2y > 2)
+					player2y--;
+			}
+			if(p2x == 1)
+			{
+				if (player2x < 320-PLAYER_SIZE-2)
+					player2x++;
+			}
+			else if(p2x == 2)
+			{
+				if(player2x > 2)
+					player2x--;
+			}
+
+			// Draw player
+			drawrectangle(pixel_buffer_start, player2x-1, player2y-1, PLAYER_SIZE+2, PLAYER_SIZE+2, 0);
+			drawrectangle(pixel_buffer_start, player2x, player2y, PLAYER_SIZE, PLAYER_SIZE, 0x0FFF);
+
+			ALT_SEM_POST(player);
+		}
 }
 void getcontrols(void *pdata)
 {
@@ -221,41 +265,73 @@ void getcontrols(void *pdata)
 				case 'g':
 					if(cmd[2] != 'r')
 					{
-						p1y = 1;
+						if (cmd[0] == '1')
+							p1y = 1;
+						else
+							p2y = 1;
+//						p1y = 1;
 					}
 					else
 					{
-						p1y = 0;
+						if (cmd[0] == '1')
+							p1y = 0;
+						else
+							p2y = 0;
+//						p1y = 0;
 					}
 					break;
 				case 'h':
 					if(cmd[2] != 'r')
 					{
-						p1y = 2;
+						if (cmd[0] == '1')
+							p1y = 2;
+						else
+							p2y = 2;
+//						p1y = 2;
 					}
 					else
 					{
-						p1y = 0;
+						if (cmd[0] == '1')
+							p1y = 0;
+						else
+							p2y = 0;
+//						p1y = 0;
 					}
 					break;
 				case 'l':
 					if(cmd[2] != 'r')
 					{
-						p1x = 2;
+						if (cmd[0] == '1')
+							p1x = 2;
+						else
+							p2x = 2;
+//						p1x = 2;
 					}
 					else
 					{
-						p1x =0;
+						if (cmd[0] == '1')
+							p1x = 0;
+						else
+							p2x = 0;
+//						p1x = 0;
 					}
 					break;
 				case 'r':
 					if(cmd[2] != 'r')
 					{
-						p1x = 1;
+						if (cmd[0] == '1')
+							p1x = 1;
+						else
+							p2x = 1;
+//						p1x = 1;
 					}
 					else
 					{
-						p1x = 0;
+						if (cmd[0] == '1')
+							p1x = 0;
+						else
+							p2x = 0;
+//						p1x = 0;
 					}
 					break;
 				case 'f':
@@ -316,7 +392,7 @@ int main(void)
 	*(dma_control) &= (1<<2); //Enable DMA controller
 
 	clearscreen(pixel_ctrl_ptr);
-	drawbox(pixel_ctrl_ptr, 34*4, 9*4, 48, 10,0xFA01);
+	//drawbox(pixel_ctrl_ptr, 34*4, 9*4, 48, 10,0xFA01);
 
 	wait_for_vsync(buffer_register,dma_control);
 
