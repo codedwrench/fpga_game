@@ -27,7 +27,7 @@ Player* player2_ptr = &player2;
 Level level;
 Level* level_ptr = &level;
 
-volatile Button* button_ptr = &level.buttons[0];
+Button* button_ptr = &level.buttons[0];
 
 /* Definition of Task Stacks */
 #define   TASK_STACKSIZE       2048
@@ -77,11 +77,11 @@ void playtone(int height, int time)
 
 	}
 }
-Button* getButton(Button* btn_ptr, alt_u16 x, alt_u16 y)
+alt_8 getButton(Button* btn_ptr, alt_u16 x, alt_u16 y)
 {
 	ALT_SEM_PEND(button, 0);
-//	for (btn_ptr = &level.buttons[0]; btn_ptr != &level.buttons[MAX_BUTTONS-1]; btn_ptr++)
-//	{
+	for (btn_ptr = &level.buttons[0]; btn_ptr != &level.buttons[MAX_BUTTONS-1]; btn_ptr++)
+	{
 		if (!btn_ptr->pressed && (btn_ptr->x > 0 && btn_ptr->y > 0))
 		{
 			if (x == btn_ptr->x || x == btn_ptr->x+BUTTON_SIZE ||
@@ -89,12 +89,13 @@ Button* getButton(Button* btn_ptr, alt_u16 x, alt_u16 y)
 			{
 				btn_ptr->pressed = 1;
 				ALT_SEM_POST(button);
-				return btn_ptr;
+				return btn_ptr->door;
 			}
 		}
-//	}
+	}
 	ALT_SEM_POST(button);
-	return btn_ptr;
+	return -1;
+
 }
 void task1(void* pdata)
 {
@@ -109,6 +110,7 @@ void task1(void* pdata)
 	ALT_SEM_POST(display);
 
 	int willCollide = 0;
+	alt_8 btnPressed = -1;
 	int x, y;
 	char TestString[40];
 //	Button btn = { 0, 0, 0, 0};
@@ -125,29 +127,27 @@ void task1(void* pdata)
 				switch(level.map[x][y])
 				{
 				case WALL:
-//				case WALL_CRATE:
+				case WALL_CRATE:
 				case WALL_INVIS:
+					btnPressed = -1;
 					willCollide = 1;
 					break;
 				case BUTTON:
-					button_ptr = getButton(button_ptr, x, y);
+					btnPressed = getButton(button_ptr, x, y);
 					willCollide = 0;
 					break;
 				default:
+					btnPressed = -1;
 					willCollide = 0;
 					break;
 				}
-				if (willCollide)
+				if (willCollide || btnPressed >= 0)
 					break;
 			}
 			if (!willCollide)
 				player1.y++;
-			/*else	// Draw player collision
-			{
-				ALT_SEM_PEND(display, 0);
-				drawRect(pixel_ctrl_ptr, 0xF000, player1.x - 1, player1.y + PLAYER_SIZE +2, PLAYER_SIZE+2, 0);
-				ALT_SEM_POST(display);
-			}*/
+			if (btnPressed >= 0)
+				sprintf(TestString, "Btn: %i", btnPressed);
 		}
 		else if(p1y == 2)
 		{
@@ -157,29 +157,27 @@ void task1(void* pdata)
 				switch(level.map[x][y])
 				{
 				case WALL:
-//				case WALL_CRATE:
+				case WALL_CRATE:
 				case WALL_INVIS:
+					btnPressed = -1;
 					willCollide = 1;
 					break;
 				case BUTTON:
-					button_ptr = getButton(button_ptr, x, y);
+					btnPressed = getButton(button_ptr, x, y);
 					willCollide = 0;
 					break;
 				default:
+					btnPressed = -1;
 					willCollide = 0;
 					break;
 				}
-				if (willCollide)
+				if (willCollide || btnPressed >= 0)
 					break;
 			}
 			if (!willCollide)
 				player1.y--;
-			/*else	// Draw player collision
-			{
-				ALT_SEM_PEND(display, 0);
-				drawRect(pixel_ctrl_ptr, 0xF000, player1.x - 1, player1.y - 2, PLAYER_SIZE+2, 0);
-				ALT_SEM_POST(display);
-			}*/
+			if (btnPressed >= 0)
+				sprintf(TestString, "Btn: %i", btnPressed);
 		}
 		if(p1x == 1)
 		{
@@ -189,29 +187,27 @@ void task1(void* pdata)
 				switch(level.map[x][y])
 				{
 				case WALL:
-//				case WALL_CRATE:
+				case WALL_CRATE:
 				case WALL_INVIS:
+					btnPressed = -1;
 					willCollide = 1;
 					break;
 				case BUTTON:
-					button_ptr = getButton(button_ptr, x, y);
+					btnPressed = getButton(button_ptr, x, y);
 					willCollide = 0;
 					break;
 				default:
+					btnPressed = -1;
 					willCollide = 0;
 					break;
 				}
-				if (willCollide)
+				if (willCollide || btnPressed >= 0)
 					break;
 			}
 			if (!willCollide)
 				player1.x++;
-			/*else	// Draw player collision
-			{
-				ALT_SEM_PEND(display, 0);
-				drawRect(pixel_ctrl_ptr, 0xF000, player1.x + PLAYER_SIZE + 2, player1.y-1, 0, PLAYER_SIZE+2);
-				ALT_SEM_POST(display);
-			}*/
+			if (btnPressed >= 0)
+				sprintf(TestString, "Btn: %i", btnPressed);
 		}
 		else if(p1x == 2)
 		{
@@ -221,35 +217,30 @@ void task1(void* pdata)
 				switch(level.map[x][y])
 				{
 				case WALL:
-//				case WALL_CRATE:
+				case WALL_CRATE:
 				case WALL_INVIS:
+					btnPressed = -1;
 					willCollide = 1;
 					break;
 				case BUTTON:
-					button_ptr = getButton(button_ptr, x, y);
+					btnPressed = getButton(button_ptr, x, y);
 					willCollide = 0;
 					break;
 				default:
+					btnPressed = -1;
 					willCollide = 0;
 					break;
 				}
-				if (willCollide)
+				if (willCollide || btnPressed >= 0)
 					break;
 			}
 			if (!willCollide)
 				player1.x--;
-//			if (button_ptr->pressed == 1)
-//			{
-//				sprintf(TestString, "Door %i already open", button_ptr->door);
-//				drawText(character_buffer, TestString, 0, 0);
-//			}
-			/*else	// Draw player collision
-			{
-				ALT_SEM_PEND(display, 0);
-				drawRect(pixel_ctrl_ptr, 0xF000, player1.x - 2, player1.y-1, 0, PLAYER_SIZE+2);
-				ALT_SEM_POST(display);
-			}*/
+			if (btnPressed >= 0)
+				sprintf(TestString, "Btn: %i", btnPressed);
 		}
+
+		drawText(character_buffer, TestString, 0, 0);
 
 		// Draw player
 		ALT_SEM_PEND(display, 0);
@@ -293,7 +284,7 @@ void task2(void* pdata)
 					willCollide = 1;
 					break;
 				case BUTTON:
-					button_ptr = getButton(button_ptr, x, y);
+					getButton(button_ptr, x, y);
 					break;
 				default:
 					willCollide = 0;
@@ -304,12 +295,6 @@ void task2(void* pdata)
 			}
 			if (!willCollide)
 				player2.y++;
-			else	// Draw player collision
-			{
-				ALT_SEM_PEND(display, 0);
-				drawRect(pixel_ctrl_ptr, 0xF000, player2.x - 1, player2.y + PLAYER_SIZE +2, PLAYER_SIZE+2, 0);
-				ALT_SEM_POST(display);
-			}
 		}
 		else if(p2y == 2)
 		{
@@ -324,7 +309,7 @@ void task2(void* pdata)
 					willCollide = 1;
 					break;
 				case BUTTON:
-					button_ptr = getButton(button_ptr, x, y);
+					getButton(button_ptr, x, y);
 					break;
 				default:
 					willCollide = 0;
@@ -335,12 +320,6 @@ void task2(void* pdata)
 			}
 			if (!willCollide)
 				player2.y--;
-			else	// Draw player collision
-			{
-				ALT_SEM_PEND(display, 0);
-				drawRect(pixel_ctrl_ptr, 0xF000, player2.x - 1, player2.y - 2, PLAYER_SIZE+2, 0);
-				ALT_SEM_POST(display);
-			}
 		}
 		if(p2x == 1)
 		{
@@ -355,7 +334,7 @@ void task2(void* pdata)
 					willCollide = 1;
 					break;
 				case BUTTON:
-					button_ptr = getButton(button_ptr, x, y);
+					getButton(button_ptr, x, y);
 					break;
 				default:
 					willCollide = 0;
@@ -366,12 +345,6 @@ void task2(void* pdata)
 			}
 			if (!willCollide)
 				player2.x++;
-			else	// Draw player collision
-			{
-				ALT_SEM_PEND(display, 0);
-				drawRect(pixel_ctrl_ptr, 0xF000, player2.x + PLAYER_SIZE + 2, player2.y-1, 0, PLAYER_SIZE+2);
-				ALT_SEM_POST(display);
-			}
 		}
 		else if(p2x == 2)
 		{
@@ -386,7 +359,7 @@ void task2(void* pdata)
 					willCollide = 1;
 					break;
 				case BUTTON:
-					button_ptr = getButton(button_ptr, x, y);
+					getButton(button_ptr, x, y);
 					break;
 				default:
 					willCollide = 0;
@@ -397,12 +370,6 @@ void task2(void* pdata)
 			}
 			if (!willCollide)
 				player2.x--;
-			else	// Draw player collision
-			{
-				ALT_SEM_PEND(display, 0);
-				drawRect(pixel_ctrl_ptr, 0xF000, player2.x - 2, player2.y-1, 0, PLAYER_SIZE+2);
-				ALT_SEM_POST(display);
-			}
 		}
 
 		// Draw player
