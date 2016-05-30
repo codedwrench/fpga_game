@@ -62,10 +62,12 @@ while 1:
             for i in range(numbuttons[0]):
                 if(joystick[0].get_button(i) == 0 and pressed[i] == 1):
                     process.stdin.write( "1" + str(i) + "r\n")
+                    pressed[i] = 0
 
             for i in range(numbuttons[1]):
                 if(joystick[1].get_button(i) == 0 and pressed[i + numbuttons[0]] == 1):
                     process.stdin.write( "2" + str(i) + "r\n")
+                    pressed[i] = 0
 
         if event.type == pygame.JOYAXISMOTION: #An axis is handled differently
             for i in range(len(joystick)):   
