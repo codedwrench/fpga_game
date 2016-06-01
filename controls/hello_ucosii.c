@@ -389,11 +389,13 @@ void LevelTask(void* pdata)
 			0,																// y1
 			SPLITSCREEN_WIDTH,												// width
 			SCREEN_HEIGHT/2 - DOOR_SIZE-1 - WALL_SIZE/2);									// height
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2,
 			SCREEN_HEIGHT/2 + DOOR_SIZE+2,
 			SPLITSCREEN_WIDTH,
 			SCREEN_HEIGHT/2 - DOOR_SIZE-1 - WALL_SIZE/2);
+	OSTimeDly(5);
 
 	// Left field walls
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
@@ -401,102 +403,123 @@ void LevelTask(void* pdata)
 			SCREEN_HEIGHT-1-20-WALL_SIZE,
 			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -18,
 			WALL_SIZE);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -22,
 			SCREEN_HEIGHT/2 - WALL_SIZE/2,
 			WALL_SIZE,
 			79);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -17,
 			SCREEN_HEIGHT/2 - WALL_SIZE/2,
 			21,
 			WALL_SIZE);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -17,
 			SCREEN_HEIGHT/2 + WALL_SIZE/2 + DOOR_SIZE,
 			40,
 			WALL_SIZE);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 65,
 			SCREEN_HEIGHT/2 - WALL_SIZE/2 + 39,
 			25,
 			WALL_SIZE);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 70,
 			SCREEN_HEIGHT/2 - WALL_SIZE/2 + 39,
 			WALL_SIZE,
 			57);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 44,
 			SCREEN_HEIGHT/2 - WALL_SIZE/2,
 			WALL_SIZE,
 			38);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 101,
 			SCREEN_HEIGHT/2 - DOOR_SIZE - WALL_SIZE/2 - 5,
 			100,
 			WALL_SIZE);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 101,
 			SCREEN_HEIGHT/2 - DOOR_SIZE - WALL_SIZE/2,
 			WALL_SIZE,
 			70);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 132,
 			SCREEN_HEIGHT/2 + 53,
 			35,
 			WALL_SIZE);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			0,
 			SCREEN_HEIGHT/2 + 25,
 			35,
 			WALL_SIZE);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			31,
 			SCREEN_HEIGHT/2 - DOOR_SIZE - WALL_SIZE/2 - 5,
 			WALL_SIZE,
 			31);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			36,
 			SCREEN_HEIGHT/2 + 4,
 			20,
 			WALL_SIZE);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			17,
 			SCREEN_HEIGHT/2 - 50,
 			120,
 			WALL_SIZE);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			110,
 			SCREEN_HEIGHT/2 - 75,
 			WALL_SIZE,
 			25);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			115,
 			SCREEN_HEIGHT/2 - 75,
 			42,
 			WALL_SIZE);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			0,
 			SCREEN_HEIGHT/2 - 75,
 			80,
 			WALL_SIZE);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			0,
 			20,
 			80,
 			WALL_SIZE);
+	OSTimeDly(5);
 	drawCollision(pixel_buffer, level_ptr, 1, WALL, WALL_COLOR, 1,
 			98,
 			20,
 			60,
 			WALL_SIZE);
+	OSTimeDly(5);
 	// Outer bounds
 	drawCollision(pixel_buffer, level_ptr, 0, WALL_INVIS, WALL_INVIS, 0,
 			0,
 			0,
 			SCREEN_WIDTH-1,
 			SCREEN_HEIGHT-1);
+	OSTimeDly(5);
+
 	ALT_SEM_POST(display);
 
 	while(1)

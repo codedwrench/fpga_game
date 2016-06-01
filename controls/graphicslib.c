@@ -167,6 +167,7 @@ void drawCollisionLine(Level* level_ptr, alt_u8 type, alt_u16 x0, alt_u16 y0, al
 }
 void drawCollision(volatile short* pixel_ctrl_ptr, Level* level_ptr, alt_u8 box, alt_u8 type, alt_u16 color, alt_u8 visible, alt_u16 x0, alt_u16 y0, alt_u16 w, alt_u16 h)
 {
+
 	if (visible)
 	{
 		if(box == 0)
