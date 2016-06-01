@@ -9,7 +9,7 @@
 #define BUTTON_SIZE 8
 #define WALL_SIZE 4
 #define DOOR_SIZE 16
-#define SPLITSCREEN_WIDTH 6
+#define SPLITSCREEN_WIDTH 4
 #define BG_COLOR 0x00F0
 #define WALL_COLOR 0xFFFF
 #define WALL_CRATE_COLOR 0xFFF0
@@ -17,14 +17,14 @@
 #define BUTTON_COLOR 0x0F00
 #define DOOR_COLOR 0x0FFF
 #define PLAYER_SPEED 5 				// OSTimeDly in player task
-#define MAX_BUTTONS 10
-#define MAX_DOORS 10
+#define MAX_BUTTONS 20
+#define MAX_DOORS 20
 
 typedef struct Player {
 	alt_u16 x, y;
 	alt_u8 yDir, xDir;
-	alt_u8* name;
 	alt_8 action;
+	alt_u8* name;
 } Player;
 
 typedef struct Button {
@@ -42,7 +42,7 @@ typedef struct Door {
 typedef struct Level {
 	alt_u8 map[SCREEN_WIDTH][SCREEN_HEIGHT];
 	Button buttons[MAX_BUTTONS];
-	Door doors[MAX_BUTTONS];
+	Door doors[MAX_DOORS];
 } Level;
 
 typedef enum ObjectType {

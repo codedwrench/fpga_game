@@ -168,15 +168,21 @@ void drawCollisionRect(volatile short* pixel_ctrl_ptr, Level* level_ptr, alt_u8 
 	drawCollisionLine(level_ptr, type, x0, y0+h, x0+w, y0+h);			// right
 	drawCollisionLine(level_ptr, type, x0+w, y0, x0+w, y0+h);			// bottom
 }
-void drawBtnAndDoor(volatile short* pixel_ctrl_ptr, Level* level_ptr, alt_u8 n)
+void drawBtnAndDoor(volatile short* pixel_ctrl_ptr, Level* level_ptr, alt_u8 n, alt_u8 hor)
 {
 	if (level_ptr->doors[n].open)
 	{
-		drawCollisionRect(pixel_ctrl_ptr, level_ptr, GROUND, BG_COLOR, 1, level_ptr->doors[n].x, level_ptr->doors[n].y, DOOR_SIZE, WALL_SIZE);
+		if (hor)
+			drawCollisionRect(pixel_ctrl_ptr, level_ptr, GROUND, BG_COLOR, 1, level_ptr->doors[n].x, level_ptr->doors[n].y, DOOR_SIZE, WALL_SIZE);
+		else
+			drawCollisionRect(pixel_ctrl_ptr, level_ptr, GROUND, BG_COLOR, 1, level_ptr->doors[n].x, level_ptr->doors[n].y, WALL_SIZE, DOOR_SIZE);
 	}
 	else
 	{
-		drawCollisionRect(pixel_ctrl_ptr, level_ptr, DOOR, DOOR_COLOR, 1, level_ptr->doors[n].x, level_ptr->doors[n].y, DOOR_SIZE, WALL_SIZE);
+		if (hor)
+			drawCollisionRect(pixel_ctrl_ptr, level_ptr, DOOR, DOOR_COLOR, 1, level_ptr->doors[n].x, level_ptr->doors[n].y, DOOR_SIZE, WALL_SIZE);
+		else
+			drawCollisionRect(pixel_ctrl_ptr, level_ptr, DOOR, DOOR_COLOR, 1, level_ptr->doors[n].x, level_ptr->doors[n].y, WALL_SIZE, DOOR_SIZE);
 	}
 	if (level_ptr->buttons[n].pressed)
 	{

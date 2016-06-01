@@ -9,15 +9,18 @@
 #define BUF_THRESHOLD 96			// 75% of 128 word buffer
 
 volatile short* pixel_buffer 	= (short*)	0x08000000;
+volatile char* character_buffer	= (char*)	0x09000000;
 volatile short* buffer_register	= (short*)	0x10003060;
 volatile short* dma_control		= (short*)	0x1000306C;
-volatile char* character_buffer	= (char*)	0x09000000;
-volatile int* audio_ptr			= (int *)	0x10003040;			// audio port address
+volatile int* audio_ptr			= (int*)	0x10003040;			// audio port address
 volatile int* RED_LED_ptr		= (int*)	RED_LED_BASE;		// RED LED address
 volatile int* JTAG_UART_ptr 	= (int*)	JTAG_UART_BASE;		// JTAG UART address
 int left_buffer[BUF_SIZE];										// left speaker
 int right_buffer[BUF_SIZE];										// right speaker
 int fifospace, leftdata, rightdata;
+
+alt_u16 doors[MAX_DOORS][2];
+alt_u16 buttons[MAX_BUTTONS][2];
 
 Player players[MAX_PLAYERS];
 Level level;
@@ -29,15 +32,18 @@ Button* button_ptr = &level.buttons[0];
 OS_STK    PlayerTask_STK[MAX_PLAYERS][TASK_STACKSIZE];
 OS_STK    ControlsTask_STK[TASK_STACKSIZE];
 OS_STK    LevelTask_STK[TASK_STACKSIZE];
+OS_STK    InitLevelTask_STK[TASK_STACKSIZE];
 ALT_SEM(display)
 ALT_SEM(audio)
 ALT_SEM(player)
 ALT_SEM(button)
+ALT_SEM(level_sem)
 
 /* Definition of Task Priorities */
 #define LEVEL_PRIORITY			5
-#define PLAYER_PRIORITY			7
-#define CONTROLS_PRIORITY		6
+#define INITLEVEL_PRIORITY		6
+#define PLAYER_PRIORITY			8
+#define CONTROLS_PRIORITY		7
 
 void playTone(int height, int time)
 {
@@ -88,6 +94,107 @@ alt_8 getButton(Button* btn_ptr, alt_u16 x, alt_u16 y)
 	return -1;
 
 }
+//void initBtnAndDoor(alt_u8 num, int *doors, int *buttons)
+void initBtnAndDoor()
+{
+//	level_ptr->doors[num].x = *doors;
+//	level_ptr->doors[num].y = *(doors+1);
+//	level_ptr->doors[num].btn = num;
+//	level_ptr->doors[num].open = 0;
+//	level_ptr->buttons[num].x = *buttons;
+//	level_ptr->buttons[num].y = *(buttons+1);
+//	level_ptr->buttons[num].door = num;
+//	level_ptr->buttons[num].pressed = 0;
+//	int i;
+//	for (i = 0; i < MAX_DOORS; i++)
+//	{
+//		level_ptr->doors[i].btn = i;
+//		level_ptr->doors[i].open = 0;
+//		level_ptr->buttons[i].door = i;
+//		level_ptr->buttons[i].pressed = 0;
+//	}
+//	level_ptr->doors[0].x = SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -1 -DOOR_SIZE;					// x
+//	level_ptr->doors[0].y = SCREEN_HEIGHT-1-20-WALL_SIZE;											// y
+//	level_ptr->doors[1].x = SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -2 -DOOR_SIZE - WALL_SIZE;
+//	level_ptr->doors[1].y = SCREEN_HEIGHT-1-20-WALL_SIZE -1 -DOOR_SIZE;
+//	level_ptr->doors[2].x = SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 39;			// x
+//	level_ptr->doors[2].y = SCREEN_HEIGHT/2 - WALL_SIZE/2 + 39;			// y
+//	level_ptr->doors[3].x = 40;			// x
+//	level_ptr->doors[3].y = 50;			// y
+//	level_ptr->doors[4].x = 50;			// x
+//	level_ptr->doors[4].y = 50;			// y
+//	level_ptr->doors[5].x = 60;			// x
+//	level_ptr->doors[5].y = 50;			// y
+//	level_ptr->doors[6].x = 70;			// x
+//	level_ptr->doors[6].y = 50;			// y
+//	level_ptr->doors[7].x = 80;			// x
+//	level_ptr->doors[7].y = 50;			// y
+//	level_ptr->doors[8].x = 0;			// x
+//	level_ptr->doors[8].y = SCREEN_HEIGHT/2 - 50;			// y
+//	level_ptr->doors[9].x = 81;			// x
+//	level_ptr->doors[9].y = 20;			// y
+//	level_ptr->doors[10].x = 10;			// x
+//	level_ptr->doors[10].y = 70;			// y
+//	level_ptr->doors[11].x = 20;			// x
+//	level_ptr->doors[11].y = 70;			// y
+//	level_ptr->doors[12].x = 30;			// x
+//	level_ptr->doors[12].y = 70;			// y
+//	level_ptr->doors[13].x = 40;			// x
+//	level_ptr->doors[13].y = 70;			// y
+//	level_ptr->doors[14].x = 50;			// x
+//	level_ptr->doors[14].y = 70;			// y
+//	level_ptr->doors[15].x = 60;			// x
+//	level_ptr->doors[15].y = 70;			// y
+//	level_ptr->doors[16].x = 70;			// x
+//	level_ptr->doors[16].y = 70;			// y
+//	level_ptr->doors[17].x = 80;			// x
+//	level_ptr->doors[17].y = 70;			// y
+//	level_ptr->doors[18].x = 90;			// x
+//	level_ptr->doors[18].y = 70;			// y
+//	level_ptr->doors[19].x = 100;			// x
+//	level_ptr->doors[19].y = 70;			// y
+//
+//	level_ptr->buttons[0].x = 10;			// x
+//	level_ptr->buttons[0].y = 10;			// y
+//	level_ptr->buttons[1].x = 20;			// x
+//	level_ptr->buttons[1].y = 10;			// y
+//	level_ptr->buttons[2].x = 30;			// x
+//	level_ptr->buttons[2].y = 10;			// y
+//	level_ptr->buttons[3].x = 40;			// x
+//	level_ptr->buttons[3].y = 10;			// y
+//	level_ptr->buttons[4].x = 50;			// x
+//	level_ptr->buttons[4].y = 10;			// y
+//	level_ptr->buttons[5].x = 60;			// x
+//	level_ptr->buttons[5].y = 10;			// y
+//	level_ptr->buttons[6].x = 70;			// x
+//	level_ptr->buttons[6].y = 10;			// y
+//	level_ptr->buttons[7].x = 80;			// x
+//	level_ptr->buttons[7].y = 10;			// y
+//	level_ptr->buttons[8].x = 90;			// x
+//	level_ptr->buttons[8].y = 10;			// y
+//	level_ptr->buttons[9].x = 100;		// x
+//	level_ptr->buttons[9].y = 10;			// y
+//	level_ptr->buttons[10].x = 10;			// x
+//	level_ptr->buttons[10].y = 30;			// y
+//	level_ptr->buttons[11].x = 20;			// x
+//	level_ptr->buttons[11].y = 30;			// y
+//	level_ptr->buttons[12].x = 30;			// x
+//	level_ptr->buttons[12].y = 30;			// y
+//	level_ptr->buttons[13].x = 40;			// x
+//	level_ptr->buttons[13].y = 30;			// y
+//	level_ptr->buttons[14].x = 50;			// x
+//	level_ptr->buttons[14].y = 30;			// y
+//	level_ptr->buttons[15].x = 60;			// x
+//	level_ptr->buttons[15].y = 30;			// y
+//	level_ptr->buttons[16].x = 70;			// x
+//	level_ptr->buttons[16].y = 30;			// y
+//	level_ptr->buttons[17].x = 80;			// x
+//	level_ptr->buttons[17].y = 30;			// y
+//	level_ptr->buttons[18].x = 90;			// x
+//	level_ptr->buttons[18].y = 30;			// y
+//	level_ptr->buttons[19].x = 100;			// x
+//	level_ptr->buttons[19].y = 30;			// y
+}
 
 void PlayerTask(void* pdata)
 {
@@ -137,8 +244,7 @@ void PlayerTask(void* pdata)
 			if (!willCollide)
 				players[pNum].y++;
 			if (btnPressed >= 0)
-				if (players[pNum].action == 2)
-					level_ptr->doors[btnPressed].open = 1;
+				level_ptr->doors[btnPressed].open = 1;
 		}
 		else if(players[pNum].yDir == UP)
 		{
@@ -169,8 +275,7 @@ void PlayerTask(void* pdata)
 			if (!willCollide)
 				players[pNum].y--;
 			if (btnPressed >= 0)
-				if (players[pNum].action == 2)
-					level_ptr->doors[btnPressed].open = 1;
+				level_ptr->doors[btnPressed].open = 1;
 		}
 		if(players[pNum].xDir == RIGHT)
 		{
@@ -201,8 +306,7 @@ void PlayerTask(void* pdata)
 			if (!willCollide)
 				players[pNum].x++;
 			if (btnPressed >= 0)
-				if (players[pNum].action == 2)
-					level_ptr->doors[btnPressed].open = 1;
+				level_ptr->doors[btnPressed].open = 1;
 		}
 		else if(players[pNum].xDir == LEFT)
 		{
@@ -233,8 +337,7 @@ void PlayerTask(void* pdata)
 			if (!willCollide)
 				players[pNum].x--;
 			if (btnPressed >= 0)
-				if (players[pNum].action == 2)
-					level_ptr->doors[btnPressed].open = 1;
+				level_ptr->doors[btnPressed].open = 1;
 		}
 
 		// Draw player
@@ -376,25 +479,131 @@ void ControlsTask(void* pdata)
 }
 void LevelTask(void* pdata)
 {
-	int toggle = 1;
-	alt_u16 c;
+	OSTimeDly(100);
+//	int doortemp[2];
+//	int buttontemp[2];
+//	int cnt= 0;
+//
+//	for (cnt = 0; cnt < MAX_DOORS; cnt++)
+//	{
+//		doortemp[0] = doors[cnt][0];
+//		doortemp[1] = doors[cnt][1];
+//		buttontemp[0] = buttons[cnt][0];
+//		buttontemp[1] = buttons[cnt][1];
+//		initBtnAndDoor(cnt, doortemp, buttontemp);
+//	}
+//	initBtnAndDoor();
 
-	level_ptr->doors[0].x = 20;
-	level_ptr->doors[0].y = 100;
-	level_ptr->doors[0].btn = 0;
-	level_ptr->doors[0].open = 0;
-	level_ptr->doors[1].x = 120;
-	level_ptr->doors[1].y = 100;
-	level_ptr->doors[1].btn = 1;
-	level_ptr->doors[1].open = 0;
-	level_ptr->buttons[0].x = 20;
-	level_ptr->buttons[0].y = 20;
-	level_ptr->buttons[0].door = 0;
-	level_ptr->buttons[0].pressed = 0;
-	level_ptr->buttons[1].x = 120;
-	level_ptr->buttons[1].y = 20;
-	level_ptr->buttons[1].door = 1;
-	level_ptr->buttons[1].pressed = 0;
+	ALT_SEM_PEND(display, 0);
+	// Draw splitscreen wall
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2,							// x1
+			0,																// y1
+			SPLITSCREEN_WIDTH,												// width
+			SCREEN_HEIGHT/2 - DOOR_SIZE-1 - WALL_SIZE/2);									// height
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2,
+			SCREEN_HEIGHT/2 + DOOR_SIZE+2,
+			SPLITSCREEN_WIDTH,
+			SCREEN_HEIGHT/2 - DOOR_SIZE-1 - WALL_SIZE/2);
+
+	// Left field walls
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			0,
+			SCREEN_HEIGHT-1-20-WALL_SIZE,
+			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -18,
+			WALL_SIZE);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -22,
+			SCREEN_HEIGHT/2 - WALL_SIZE/2,
+			WALL_SIZE,
+			79);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -17,
+			SCREEN_HEIGHT/2 - WALL_SIZE/2,
+			21,
+			WALL_SIZE);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -17,
+			SCREEN_HEIGHT/2 + WALL_SIZE/2 + DOOR_SIZE,
+			40,
+			WALL_SIZE);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 65,
+			SCREEN_HEIGHT/2 - WALL_SIZE/2 + 39,
+			25,
+			WALL_SIZE);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 70,
+			SCREEN_HEIGHT/2 - WALL_SIZE/2 + 39,
+			WALL_SIZE,
+			57);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 44,
+			SCREEN_HEIGHT/2 - WALL_SIZE/2,
+			WALL_SIZE,
+			38);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 101,
+			SCREEN_HEIGHT/2 - DOOR_SIZE - WALL_SIZE/2 - 5,
+			100,
+			WALL_SIZE);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 101,
+			SCREEN_HEIGHT/2 - DOOR_SIZE - WALL_SIZE/2,
+			WALL_SIZE,
+			70);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 132,
+			SCREEN_HEIGHT/2 + 53,
+			35,
+			WALL_SIZE);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			0,
+			SCREEN_HEIGHT/2 + 25,
+			35,
+			WALL_SIZE);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			31,
+			SCREEN_HEIGHT/2 - DOOR_SIZE - WALL_SIZE/2 - 5,
+			WALL_SIZE,
+			31);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			36,
+			SCREEN_HEIGHT/2 + 4,
+			20,
+			WALL_SIZE);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			17,
+			SCREEN_HEIGHT/2 - 50,
+			120,
+			WALL_SIZE);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			110,
+			SCREEN_HEIGHT/2 - 75,
+			WALL_SIZE,
+			25);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			115,
+			SCREEN_HEIGHT/2 - 75,
+			42,
+			WALL_SIZE);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			0,
+			SCREEN_HEIGHT/2 - 75,
+			80,
+			WALL_SIZE);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			0,
+			20,
+			80,
+			WALL_SIZE);
+	drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
+			98,
+			20,
+			60,
+			WALL_SIZE);
+	ALT_SEM_POST(display);
 
 	while(1)
 	{
@@ -404,48 +613,41 @@ void LevelTask(void* pdata)
 		// Draw level
 		ALT_SEM_PEND(display, 0);
 
-		// Middle wall
-		drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
-				SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2,							// x1
-				0,																// y1
-				SPLITSCREEN_WIDTH,												// width
-				SCREEN_HEIGHT/2 - DOOR_SIZE-1);									// height
-		drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
-				SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2,
-				SCREEN_HEIGHT/2 + DOOR_SIZE,
-				SPLITSCREEN_WIDTH,
-				SCREEN_HEIGHT/2 - DOOR_SIZE-1);
-
-		// Middle crate wall
+		// Crate wall
 		drawCollisionRect(pixel_buffer, level_ptr, WALL_CRATE, WALL_CRATE_COLOR, 1,
 				SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2,
-				SCREEN_HEIGHT/2 - DOOR_SIZE,
+				SCREEN_HEIGHT/2 - DOOR_SIZE - WALL_SIZE/2,
 				SPLITSCREEN_WIDTH,
 				DOOR_SIZE-1);
 		drawCollisionRect(pixel_buffer, level_ptr, WALL_CRATE, WALL_CRATE_COLOR, 1,
 				SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2,
-				SCREEN_HEIGHT/2,
+				SCREEN_HEIGHT/2 + WALL_SIZE/2,
 				SPLITSCREEN_WIDTH,
 				DOOR_SIZE-1);
 
-		drawCollisionRect(pixel_buffer, level_ptr, WALL, WALL_COLOR, 1,
-				0,
-				SCREEN_HEIGHT-1-20-WALL_SIZE,
-				SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -1 -DOOR_SIZE,
-				WALL_SIZE);
-
-		if (toggle)
-		{
-			c = 0xFF00;
-			toggle = 0;
-		}
-		else
-		{
-			c = 0x00FF;
-			toggle = 1;
-		}
-		drawBtnAndDoor(pixel_buffer, level_ptr, 0);
-		drawBtnAndDoor(pixel_buffer, level_ptr, 1);
+		// Draw buttons and their respective doors
+//		ALT_SEM_PEND(level_sem, 0);
+		drawBtnAndDoor(pixel_buffer, level_ptr, 0, 1);
+		drawBtnAndDoor(pixel_buffer, level_ptr, 1, 0);
+		drawBtnAndDoor(pixel_buffer, level_ptr, 2, 1);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 3, 1);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 4, 1);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 5, 1);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 6, 1);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 7, 1);
+		drawBtnAndDoor(pixel_buffer, level_ptr, 8, 1);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 9, 1);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 10, 0);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 11, 0);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 12, 0);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 13, 0);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 14, 0);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 15, 0);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 16, 0);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 17, 0);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 18, 0);
+//		drawBtnAndDoor(pixel_buffer, level_ptr, 19, 0);
+//		ALT_SEM_POST(level_sem);
 
 		// Outer bounds
 		drawCollisionRect(pixel_buffer, level_ptr, WALL_INVIS, WALL_INVIS, 0,
@@ -456,8 +658,104 @@ void LevelTask(void* pdata)
 		ALT_SEM_POST(display);
 	}
 }
+void InitLevelTask(void* pdata)
+{
+//	ALT_SEM_PEND(level_sem, 0);
+	int i;
+	for (i = 0; i < MAX_DOORS; i++)
+	{
+		level_ptr->doors[i].btn = i;
+		level_ptr->doors[i].open = 0;
+		level_ptr->buttons[i].door = i;
+		level_ptr->buttons[i].pressed = 0;
+	}
+	level_ptr->doors[0].x = SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -1 -DOOR_SIZE;					// x
+	level_ptr->doors[0].y = SCREEN_HEIGHT-1-20-WALL_SIZE;											// y
+	level_ptr->doors[1].x = SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -2 -DOOR_SIZE - WALL_SIZE;
+	level_ptr->doors[1].y = SCREEN_HEIGHT-1-20-WALL_SIZE -1 -DOOR_SIZE;
+	level_ptr->doors[2].x = SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 39;			// x
+	level_ptr->doors[2].y = SCREEN_HEIGHT/2 - WALL_SIZE/2 + 39;			// y
+	level_ptr->doors[3].x = 40;			// x
+	level_ptr->doors[3].y = 50;			// y
+	level_ptr->doors[4].x = 50;			// x
+	level_ptr->doors[4].y = 50;			// y
+	level_ptr->doors[5].x = 60;			// x
+	level_ptr->doors[5].y = 50;			// y
+	level_ptr->doors[6].x = 70;			// x
+	level_ptr->doors[6].y = 50;			// y
+	level_ptr->doors[7].x = 80;			// x
+	level_ptr->doors[7].y = 50;			// y
+	level_ptr->doors[8].x = 0;			// x
+	level_ptr->doors[8].y = SCREEN_HEIGHT/2 - 50;			// y
+	level_ptr->doors[9].x = 81;			// x
+	level_ptr->doors[9].y = 20;			// y
+	level_ptr->doors[10].x = 10;			// x
+	level_ptr->doors[10].y = 70;			// y
+	level_ptr->doors[11].x = 20;			// x
+	level_ptr->doors[11].y = 70;			// y
+	level_ptr->doors[12].x = 30;			// x
+	level_ptr->doors[12].y = 70;			// y
+	level_ptr->doors[13].x = 40;			// x
+	level_ptr->doors[13].y = 70;			// y
+	level_ptr->doors[14].x = 50;			// x
+	level_ptr->doors[14].y = 70;			// y
+	level_ptr->doors[15].x = 60;			// x
+	level_ptr->doors[15].y = 70;			// y
+	level_ptr->doors[16].x = 70;			// x
+	level_ptr->doors[16].y = 70;			// y
+	level_ptr->doors[17].x = 80;			// x
+	level_ptr->doors[17].y = 70;			// y
+	level_ptr->doors[18].x = 90;			// x
+	level_ptr->doors[18].y = 70;			// y
+	level_ptr->doors[19].x = 100;			// x
+	level_ptr->doors[19].y = 70;			// y
+
+	level_ptr->buttons[0].x = 10;			// x
+	level_ptr->buttons[0].y = 10;			// y
+	level_ptr->buttons[1].x = 20;			// x
+	level_ptr->buttons[1].y = 10;			// y
+	level_ptr->buttons[2].x = 30;			// x
+	level_ptr->buttons[2].y = 10;			// y
+	level_ptr->buttons[3].x = 40;			// x
+	level_ptr->buttons[3].y = 10;			// y
+	level_ptr->buttons[4].x = 50;			// x
+	level_ptr->buttons[4].y = 10;			// y
+	level_ptr->buttons[5].x = 60;			// x
+	level_ptr->buttons[5].y = 10;			// y
+	level_ptr->buttons[6].x = 70;			// x
+	level_ptr->buttons[6].y = 10;			// y
+	level_ptr->buttons[7].x = 80;			// x
+	level_ptr->buttons[7].y = 10;			// y
+	level_ptr->buttons[8].x = 90;			// x
+	level_ptr->buttons[8].y = 10;			// y
+	level_ptr->buttons[9].x = 100;		// x
+	level_ptr->buttons[9].y = 10;			// y
+	level_ptr->buttons[10].x = 10;			// x
+	level_ptr->buttons[10].y = 30;			// y
+	level_ptr->buttons[11].x = 20;			// x
+	level_ptr->buttons[11].y = 30;			// y
+	level_ptr->buttons[12].x = 30;			// x
+	level_ptr->buttons[12].y = 30;			// y
+	level_ptr->buttons[13].x = 40;			// x
+	level_ptr->buttons[13].y = 30;			// y
+	level_ptr->buttons[14].x = 50;			// x
+	level_ptr->buttons[14].y = 30;			// y
+	level_ptr->buttons[15].x = 60;			// x
+	level_ptr->buttons[15].y = 30;			// y
+	level_ptr->buttons[16].x = 70;			// x
+	level_ptr->buttons[16].y = 30;			// y
+	level_ptr->buttons[17].x = 80;			// x
+	level_ptr->buttons[17].y = 30;			// y
+	level_ptr->buttons[18].x = 90;			// x
+	level_ptr->buttons[18].y = 30;			// y
+	level_ptr->buttons[19].x = 100;			// x
+	level_ptr->buttons[19].y = 30;			// y
+//	ALT_SEM_POST(level_sem);
+//	int x = 12345;
+}
 int main(void)
 {
+
 	OSInit();
 
 	int err = ALT_SEM_CREATE(&display, 1);
@@ -470,14 +768,17 @@ int main(void)
 	if(err!= 0)
 		printf("Semaphore not created\n");
 	err = ALT_SEM_CREATE(&button, 1);
-		if(err!= 0)
-			printf("Semaphore not created\n");
+	if(err!= 0)
+		printf("Semaphore not created\n");
+	err = ALT_SEM_CREATE(&level_sem, 1);
+	if(err!= 0)
+		printf("Semaphore not created\n");
 
 	*(dma_control) &= (1<<2); //Enable DMA controller
 
 	// Init players
-	Player p1 = { SCREEN_WIDTH/4, 10, NONE, "TestGuy1\0" };
-	Player p2 = { SCREEN_WIDTH/4*3, 10, NONE, "TestGuy2\0" };
+	Player p1 = { SCREEN_WIDTH/4, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2, "TestGuy1\0", NONE };
+	Player p2 = { SCREEN_WIDTH/4*3, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2, NONE, "TestGuy2\0", NONE };
 	players[0] = p1;
 	players[1] = p2;
 
@@ -523,6 +824,16 @@ int main(void)
 			CONTROLS_PRIORITY,
 			CONTROLS_PRIORITY,
 			ControlsTask_STK,
+			TASK_STACKSIZE,
+			NULL,
+			0);
+
+	OSTaskCreateExt(InitLevelTask,
+			0,
+			(void *)&InitLevelTask_STK[TASK_STACKSIZE-1],
+			INITLEVEL_PRIORITY,
+			INITLEVEL_PRIORITY,
+			InitLevelTask_STK,
 			TASK_STACKSIZE,
 			NULL,
 			0);
