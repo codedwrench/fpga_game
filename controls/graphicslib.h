@@ -13,7 +13,7 @@ void drawBox(volatile short* pixel_ctrl_ptr, alt_u16 color, alt_u16 x0, alt_u16 
 void drawCircle(volatile short* pixel_ctrl_ptr, alt_u16 color, alt_u16 xs, alt_u8 ys, alt_u8 r);
 void drawText(volatile char* char_ctrl_ptr, char* text_ptr, alt_u16 x, alt_u8 y);
 void drawCollisionLine(Level* level_ptr, alt_u8 type, alt_u16 x0, alt_u16 y0, alt_u16 x1, alt_u16 y1);
-void drawCollisionRect(volatile short* pixel_ctrl_ptr, Level* level_ptr, alt_u8 type, alt_u16 color, alt_u8 visible, alt_u16 x0, alt_u16 y0, alt_u16 w, alt_u16 h);
+void drawCollision(volatile short* pixel_ctrl_ptr, Level* level_ptr, alt_u8 box, alt_u8 type, alt_u16 color, alt_u8 visible, alt_u16 x0, alt_u16 y0, alt_u16 w, alt_u16 h);
 void drawBtnAndDoor(volatile short* pixel_ctrl_ptr, Level* level_ptr, alt_u8 n, alt_u8 hor);
 
 #endif

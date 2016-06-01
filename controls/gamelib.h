@@ -31,12 +31,14 @@ typedef struct Button {
 	alt_u16 x, y;
 	alt_u8 door;
 	alt_u8 pressed;
+	alt_u8 pressing;
 } Button;
 
 typedef struct Door {
 	alt_u16 x, y;
 	alt_u8 btn;
 	alt_u8 open;
+	alt_u8 opening;
 } Door;
 
 typedef struct Level {
