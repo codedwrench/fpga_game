@@ -40,8 +40,8 @@ ALT_SEM(button)
 ALT_SEM(level_sem)
 
 /* Definition of Task Priorities */
-#define LEVEL_PRIORITY			5
-#define INITLEVEL_PRIORITY		6
+#define LEVEL_PRIORITY			6
+#define INITLEVEL_PRIORITY		5
 #define PLAYER_PRIORITY			8
 #define CONTROLS_PRIORITY		7
 
@@ -658,9 +658,32 @@ void LevelTask(void* pdata)
 		ALT_SEM_POST(display);
 	}
 }
+int fillDoor(alt_u8 door ,alt_u16 x,alt_u16 y)
+{
+	level_ptr->doors[door].x = x;
+	level_ptr->doors[door].y  = y;
+	OSTimeDly(2);
+	if(level_ptr->doors[door].x != x || level_ptr->doors[door].y != y)
+	{
+		return 1;
+	}
+	return 0;
+}
+int fillButton(alt_u8 button ,alt_u16 x,alt_u16 y)
+{
+	level_ptr->buttons[button].x = x;
+	level_ptr->buttons[button].y  = y;
+	OSTimeDly(2);
+	if(level_ptr->buttons[button].x != x || level_ptr->buttons[button].y != y)
+	{
+		return 1;
+	}
+	return 0;
+}
 void InitLevelTask(void* pdata)
 {
-//	ALT_SEM_PEND(level_sem, 0);
+	alt_u8 err = 0;
+    ALT_SEM_PEND(level_sem, 0);
 	int i;
 	for (i = 0; i < MAX_DOORS; i++)
 	{
@@ -669,89 +692,51 @@ void InitLevelTask(void* pdata)
 		level_ptr->buttons[i].door = i;
 		level_ptr->buttons[i].pressed = 0;
 	}
-	level_ptr->doors[0].x = SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -1 -DOOR_SIZE;					// x
-	level_ptr->doors[0].y = SCREEN_HEIGHT-1-20-WALL_SIZE;											// y
-	level_ptr->doors[1].x = SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -2 -DOOR_SIZE - WALL_SIZE;
-	level_ptr->doors[1].y = SCREEN_HEIGHT-1-20-WALL_SIZE -1 -DOOR_SIZE;
-	level_ptr->doors[2].x = SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 39;			// x
-	level_ptr->doors[2].y = SCREEN_HEIGHT/2 - WALL_SIZE/2 + 39;			// y
-	level_ptr->doors[3].x = 40;			// x
-	level_ptr->doors[3].y = 50;			// y
-	level_ptr->doors[4].x = 50;			// x
-	level_ptr->doors[4].y = 50;			// y
-	level_ptr->doors[5].x = 60;			// x
-	level_ptr->doors[5].y = 50;			// y
-	level_ptr->doors[6].x = 70;			// x
-	level_ptr->doors[6].y = 50;			// y
-	level_ptr->doors[7].x = 80;			// x
-	level_ptr->doors[7].y = 50;			// y
-	level_ptr->doors[8].x = 0;			// x
-	level_ptr->doors[8].y = SCREEN_HEIGHT/2 - 50;			// y
-	level_ptr->doors[9].x = 81;			// x
-	level_ptr->doors[9].y = 20;			// y
-	level_ptr->doors[10].x = 10;			// x
-	level_ptr->doors[10].y = 70;			// y
-	level_ptr->doors[11].x = 20;			// x
-	level_ptr->doors[11].y = 70;			// y
-	level_ptr->doors[12].x = 30;			// x
-	level_ptr->doors[12].y = 70;			// y
-	level_ptr->doors[13].x = 40;			// x
-	level_ptr->doors[13].y = 70;			// y
-	level_ptr->doors[14].x = 50;			// x
-	level_ptr->doors[14].y = 70;			// y
-	level_ptr->doors[15].x = 60;			// x
-	level_ptr->doors[15].y = 70;			// y
-	level_ptr->doors[16].x = 70;			// x
-	level_ptr->doors[16].y = 70;			// y
-	level_ptr->doors[17].x = 80;			// x
-	level_ptr->doors[17].y = 70;			// y
-	level_ptr->doors[18].x = 90;			// x
-	level_ptr->doors[18].y = 70;			// y
-	level_ptr->doors[19].x = 100;			// x
-	level_ptr->doors[19].y = 70;			// y
+	err = fillDoor(0,SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -1 -DOOR_SIZE,SCREEN_HEIGHT-1-20-WALL_SIZE);
+	err = fillDoor(1,SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 -2 -DOOR_SIZE - WALL_SIZE,SCREEN_HEIGHT-1-20-WALL_SIZE -1 -DOOR_SIZE);
+	err = fillDoor(2,SCREEN_WIDTH/2 - SPLITSCREEN_WIDTH/2 - 39,SCREEN_HEIGHT/2 - WALL_SIZE/2 + 39);
+	err = fillDoor(3,40,50);
+	err = fillDoor(4,50,50);
+	err = fillDoor(5,60,50);
+	err = fillDoor(6,70,50);
+	err = fillDoor(7,80,50);
+	err = fillDoor(8,0,70);
+	err = fillDoor(9,81,20);
+	err = fillDoor(10,10,70);
+	err = fillDoor(11,20,70);
+	err = fillDoor(12,30,70);
+	err = fillDoor(13,40,70);
+	err = fillDoor(14,50,70);
+	err = fillDoor(15,60,70);
+	err = fillDoor(16,70,70);
+	err = fillDoor(17,80,70);
+	err = fillDoor(18,90,70);
+	err = fillDoor(19,100,70);
 
-	level_ptr->buttons[0].x = 10;			// x
-	level_ptr->buttons[0].y = 10;			// y
-	level_ptr->buttons[1].x = 20;			// x
-	level_ptr->buttons[1].y = 10;			// y
-	level_ptr->buttons[2].x = 30;			// x
-	level_ptr->buttons[2].y = 10;			// y
-	level_ptr->buttons[3].x = 40;			// x
-	level_ptr->buttons[3].y = 10;			// y
-	level_ptr->buttons[4].x = 50;			// x
-	level_ptr->buttons[4].y = 10;			// y
-	level_ptr->buttons[5].x = 60;			// x
-	level_ptr->buttons[5].y = 10;			// y
-	level_ptr->buttons[6].x = 70;			// x
-	level_ptr->buttons[6].y = 10;			// y
-	level_ptr->buttons[7].x = 80;			// x
-	level_ptr->buttons[7].y = 10;			// y
-	level_ptr->buttons[8].x = 90;			// x
-	level_ptr->buttons[8].y = 10;			// y
-	level_ptr->buttons[9].x = 100;		// x
-	level_ptr->buttons[9].y = 10;			// y
-	level_ptr->buttons[10].x = 10;			// x
-	level_ptr->buttons[10].y = 30;			// y
-	level_ptr->buttons[11].x = 20;			// x
-	level_ptr->buttons[11].y = 30;			// y
-	level_ptr->buttons[12].x = 30;			// x
-	level_ptr->buttons[12].y = 30;			// y
-	level_ptr->buttons[13].x = 40;			// x
-	level_ptr->buttons[13].y = 30;			// y
-	level_ptr->buttons[14].x = 50;			// x
-	level_ptr->buttons[14].y = 30;			// y
-	level_ptr->buttons[15].x = 60;			// x
-	level_ptr->buttons[15].y = 30;			// y
-	level_ptr->buttons[16].x = 70;			// x
-	level_ptr->buttons[16].y = 30;			// y
-	level_ptr->buttons[17].x = 80;			// x
-	level_ptr->buttons[17].y = 30;			// y
-	level_ptr->buttons[18].x = 90;			// x
-	level_ptr->buttons[18].y = 30;			// y
-	level_ptr->buttons[19].x = 100;			// x
-	level_ptr->buttons[19].y = 30;			// y
-//	ALT_SEM_POST(level_sem);
-//	int x = 12345;
+	err = fillButton(0,10,10);
+	err = fillButton(1,20,10);
+	err = fillButton(2,30,10);
+	err = fillButton(3,40,10);
+	err = fillButton(4,50,10);
+	err = fillButton(5,60,10);
+	err = fillButton(6,70,10);
+	err = fillButton(7,80,10);
+	err = fillButton(8,90,10);
+	err = fillButton(9,100,30);
+	err = fillButton(10,10,30);
+	err = fillButton(11,20,30);
+	err = fillButton(12,30,30);
+	err = fillButton(13,40,30);
+	err = fillButton(14,50,30);
+	err = fillButton(15,60,30);
+	err = fillButton(16,70,30);
+	err = fillButton(17,80,30);
+	err = fillButton(18,90,30);
+	err = fillButton(19,100,30);
+
+    ALT_SEM_POST(level_sem);
+	int x = 12345;
+	OSTaskDel(OS_PRIO_SELF);
 }
 int main(void)
 {
