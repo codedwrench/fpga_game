@@ -84,3 +84,4 @@ obj/
 
 # Code Recommenders
 .recommenders/
+contr.py
