@@ -382,18 +382,49 @@ int main (void){
 	char pix =  alt_up_sd_card_read(file);
 	int count = 0;
 	int county= 0;
+	int doortrig[2] = {999,999};
+	alt_u8 vert;
 	while(pix != EOF)
 	{
 		if(pix == '1')
 		{
-			drawBox(pixel_buffer,0xFFFF,count*4,county*4,4,4);
-			*(level_ptr->map+count*(county+1)) = WALL;
+			drawBox(pixel_buffer,WALL_COLOR,count*4,county*4,4,4);
 		}
 		else if(pix == '\n')
 		{
 			county++;
 			count =-1;
 		}
+		else if(pix == 'd' && vert == 0)
+		{
+			doortrig[0] = count;
+			doortrig[1] = county;
+		}
+
+		if(count -1 == doortrig[0] && county == doortrig[1] && pix != ' ')
+		{
+			drawBox(pixel_buffer,DOOR_COLOR,(count-1)*4,county*4,16,4);
+//			level_ptr->doors[(int)pix-50]->btn = (int)pix-50;
+//			level_ptr->doors[(int)pix-50]->open = 0;
+//			level_ptr->doors[(int)pix-50]->x = count -1;
+//			level_ptr->doors[(int)pix-50]->y = county;
+//			level_ptr->doors[(int)pix-50]->opening = 1;
+		}
+		else if(count-1 == doortrig[0] && county == doortrig[1] && pix == ' ' )
+		{
+			vert = 1;
+		}
+		if(vert == 1 && count == doortrig[0] && county-1 == doortrig[1] && pix != ' ')
+		{
+			drawBox(pixel_buffer,DOOR_COLOR,(count)*4,(county-1)*4,4,16);
+//			level_ptr->doors[(int)pix-50]->btn = (int)pix-50;
+//			level_ptr->doors[(int)pix-50]->open = 0;
+//			level_ptr->doors[(int)pix-50]->x = count -1;
+//			level_ptr->doors[(int)pix-50]->y = county;
+//			level_ptr->doors[(int)pix-50]->opening = 1;
+			vert = 0;
+		}
+
 		pix =  alt_up_sd_card_read(file);
 		count++;
 	}
