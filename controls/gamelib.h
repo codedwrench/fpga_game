@@ -20,6 +20,7 @@
 #define MAX_BUTTONS 20
 #define MAX_DOORS 20
 
+
 typedef struct Player {
 	alt_u16 x, y;
 	alt_u8 yDir, xDir;
@@ -42,7 +43,7 @@ typedef struct Door {
 } Door;
 
 typedef struct Level {
-	alt_u8 map[SCREEN_WIDTH][SCREEN_HEIGHT];
+	alt_u8  * map;
 	Button buttons[MAX_BUTTONS];
 	Door doors[MAX_DOORS];
 } Level;
