@@ -94,15 +94,84 @@ alt_8 getButton(Button* btn_ptr, alt_u16 x, alt_u16 y)
 	return -1;
 
 }
+void movePlayer(alt_u8 pNum, alt_u8 dir)
+{
+	alt_u8 willCollide = 0;
+	alt_8 btnPressed = -1;
+	alt_u16 x, y, p, p0, p1;
+
+	switch(dir)
+	{
+	case DOWN:
+		p0 = players[pNum].x -1;
+		p1 = players[pNum].x +PLAYER_SIZE +2;
+		x = p0;
+		y = players[pNum].y +PLAYER_SIZE +2;
+		break;
+	case UP:
+		p0 = players[pNum].x -1;
+		p1 = players[pNum].x +PLAYER_SIZE +2;
+		x = p0;
+		y = players[pNum].y +PLAYER_SIZE +2;
+		break;
+	case LEFT:
+		p0 = players[pNum].y -1;
+		p1 = players[pNum].y +PLAYER_SIZE +2;
+		x = players[pNum].x -2;
+		y = p0;
+		break;
+	case RIGHT:
+		p0 = players[pNum].y -1;
+		p1 = players[pNum].y +PLAYER_SIZE +2;
+		x = players[pNum].x +PLAYER_SIZE +2;
+		y = p0;
+		break;
+	default:
+		break;
+	}
+	for (p = p0; p < p1; p++)
+	{
+		if (dir == UP || dir == DOWN)
+			x = p;
+		else if (dir == LEFT || dir == RIGHT)
+			y = p;
+		switch(level.map[x][y])
+		{
+		case WALL:
+		case WALL_CRATE:
+		case WALL_INVIS:
+		case DOOR:
+			btnPressed = -1;
+			willCollide = 1;
+			break;
+		case BUTTON:
+			btnPressed = getButton(button_ptr, x, y);
+			willCollide = 0;
+			break;
+		default:
+			btnPressed = -1;
+			willCollide = 0;
+			break;
+		}
+		if (willCollide || btnPressed >= 0)
+			break;
+	}
+	if (!willCollide)
+		players[pNum].y++;
+	if (btnPressed >= 0)
+	{
+		level_ptr->doors[btnPressed].open = 1;
+	}
+}
 
 void PlayerTask(void* pdata)
 {
 	ALT_SEM_PEND(player, 0);
 
 	alt_u8 pNum = (alt_u8*) pdata;
-	alt_u8 willCollide = 0;
-	alt_8 btnPressed = -1;
-	alt_u16 x, y;
+//	alt_u8 willCollide = 0;
+//	alt_8 btnPressed = -1;
+//	alt_u16 x, y;
 
 	// Draw initial playerbox
 	ALT_SEM_PEND(display, 0);
@@ -116,129 +185,133 @@ void PlayerTask(void* pdata)
 
 		if(players[pNum].yDir == DOWN)
 		{
-			y = players[pNum].y+PLAYER_SIZE+2;
-			for (x = players[pNum].x-1; x < players[pNum].x + PLAYER_SIZE+2; x++)
-			{
-				switch(level.map[x][y])
-				{
-				case WALL:
-				case WALL_CRATE:
-				case WALL_INVIS:
-				case DOOR:
-					btnPressed = -1;
-					willCollide = 1;
-					break;
-				case BUTTON:
-					btnPressed = getButton(button_ptr, x, y);
-					willCollide = 0;
-					break;
-				default:
-					btnPressed = -1;
-					willCollide = 0;
-					break;
-				}
-				if (willCollide || btnPressed >= 0)
-					break;
-			}
-			if (!willCollide)
-				players[pNum].y++;
-			if (btnPressed >= 0)
-			{
-				level_ptr->doors[btnPressed].open = 1;
-			}
+			movePlayer(pNum, DOWN);
+//			y = players[pNum].y+PLAYER_SIZE+2;
+//			for (x = players[pNum].x-1; x < players[pNum].x + PLAYER_SIZE+2; x++)
+//			{
+//				switch(level.map[x][y])
+//				{
+//				case WALL:
+//				case WALL_CRATE:
+//				case WALL_INVIS:
+//				case DOOR:
+//					btnPressed = -1;
+//					willCollide = 1;
+//					break;
+//				case BUTTON:
+//					btnPressed = getButton(button_ptr, x, y);
+//					willCollide = 0;
+//					break;
+//				default:
+//					btnPressed = -1;
+//					willCollide = 0;
+//					break;
+//				}
+//				if (willCollide || btnPressed >= 0)
+//					break;
+//			}
+//			if (!willCollide)
+//				players[pNum].y++;
+//			if (btnPressed >= 0)
+//			{
+//				level_ptr->doors[btnPressed].open = 1;
+//			}
 		}
 		else if(players[pNum].yDir == UP)
 		{
-			y = players[pNum].y-2;
-			for (x = players[pNum].x-1; x < players[pNum].x + PLAYER_SIZE+2; x++)
-			{
-				switch(level.map[x][y])
-				{
-				case WALL:
-				case WALL_CRATE:
-				case WALL_INVIS:
-				case DOOR:
-					btnPressed = -1;
-					willCollide = 1;
-					break;
-				case BUTTON:
-					btnPressed = getButton(button_ptr, x, y);
-					willCollide = 0;
-					break;
-				default:
-					btnPressed = -1;
-					willCollide = 0;
-					break;
-				}
-				if (willCollide || btnPressed >= 0)
-					break;
-			}
-			if (!willCollide)
-				players[pNum].y--;
-			if (btnPressed >= 0)
-				level_ptr->doors[btnPressed].open = 1;
+			movePlayer(pNum, UP);
+//			y = players[pNum].y-2;
+//			for (x = players[pNum].x-1; x < players[pNum].x + PLAYER_SIZE+2; x++)
+//			{
+//				switch(level.map[x][y])
+//				{
+//				case WALL:
+//				case WALL_CRATE:
+//				case WALL_INVIS:
+//				case DOOR:
+//					btnPressed = -1;
+//					willCollide = 1;
+//					break;
+//				case BUTTON:
+//					btnPressed = getButton(button_ptr, x, y);
+//					willCollide = 0;
+//					break;
+//				default:
+//					btnPressed = -1;
+//					willCollide = 0;
+//					break;
+//				}
+//				if (willCollide || btnPressed >= 0)
+//					break;
+//			}
+//			if (!willCollide)
+//				players[pNum].y--;
+//			if (btnPressed >= 0)
+//				level_ptr->doors[btnPressed].open = 1;
 		}
 		if(players[pNum].xDir == RIGHT)
 		{
-			x = players[pNum].x+PLAYER_SIZE+2;
-			for (y = players[pNum].y-1; y < players[pNum].y + PLAYER_SIZE+2; y++)
-			{
-				switch(level.map[x][y])
-				{
-				case WALL:
-				case WALL_CRATE:
-				case WALL_INVIS:
-				case DOOR:
-					btnPressed = -1;
-					willCollide = 1;
-					break;
-				case BUTTON:
-					btnPressed = getButton(button_ptr, x, y);
-					willCollide = 0;
-					break;
-				default:
-					btnPressed = -1;
-					willCollide = 0;
-					break;
-				}
-				if (willCollide || btnPressed >= 0)
-					break;
-			}
-			if (!willCollide)
-				players[pNum].x++;
-			if (btnPressed >= 0)
-				level_ptr->doors[btnPressed].open = 1;
+			movePlayer(pNum, RIGHT);
+//			x = players[pNum].x+PLAYER_SIZE+2;
+//			for (y = players[pNum].y-1; y < players[pNum].y + PLAYER_SIZE+2; y++)
+//			{
+//				switch(level.map[x][y])
+//				{
+//				case WALL:
+//				case WALL_CRATE:
+//				case WALL_INVIS:
+//				case DOOR:
+//					btnPressed = -1;
+//					willCollide = 1;
+//					break;
+//				case BUTTON:
+//					btnPressed = getButton(button_ptr, x, y);
+//					willCollide = 0;
+//					break;
+//				default:
+//					btnPressed = -1;
+//					willCollide = 0;
+//					break;
+//				}
+//				if (willCollide || btnPressed >= 0)
+//					break;
+//			}
+//			if (!willCollide)
+//				players[pNum].x++;
+//			if (btnPressed >= 0)
+//				level_ptr->doors[btnPressed].open = 1;
 		}
 		else if(players[pNum].xDir == LEFT)
 		{
-			x = players[pNum].x-2;
-			for (y = players[pNum].y-1; y < players[pNum].y + PLAYER_SIZE+2; y++)
-			{
-				switch(level.map[x][y])
-				{
-				case WALL:
-				case WALL_CRATE:
-				case WALL_INVIS:
-				case DOOR:
-					btnPressed = -1;
-					willCollide = 1;
-					break;
-				case BUTTON:
-					btnPressed = getButton(button_ptr, x, y);
-					willCollide = 0;
-					break;
-				default:
-					btnPressed = -1;
-					willCollide = 0;
-					break;
-				}
-				if (willCollide || btnPressed >= 0)
-					break;
-			}
-			if (!willCollide)
-				players[pNum].x--;
-			if (btnPressed >= 0)
-				level_ptr->doors[btnPressed].open = 1;
+			movePlayer(pNum, LEFT);
+//			x = players[pNum].x-2;
+//			for (y = players[pNum].y-1; y < players[pNum].y + PLAYER_SIZE+2; y++)
+//			{
+//				switch(level.map[x][y])
+//				{
+//				case WALL:
+//				case WALL_CRATE:
+//				case WALL_INVIS:
+//				case DOOR:
+//					btnPressed = -1;
+//					willCollide = 1;
+//					break;
+//				case BUTTON:
+//					btnPressed = getButton(button_ptr, x, y);
+//					willCollide = 0;
+//					break;
+//				default:
+//					btnPressed = -1;
+//					willCollide = 0;
+//					break;
+//				}
+//				if (willCollide || btnPressed >= 0)
+//					break;
+//			}
+//			if (!willCollide)
+//				players[pNum].x--;
+//			if (btnPressed >= 0)
+//				level_ptr->doors[btnPressed].open = 1;
 		}
 
 		// Draw player
