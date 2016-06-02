@@ -139,7 +139,7 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 			x = p;
 		else if (dir == LEFT || dir == RIGHT)
 			y = p;
-//		switch(*(level_ptr->map+(x/4)*((y/4)+1)))
+//		switch(level.map[x][y])
 //		{
 //		case WALL:
 //		case WALL_CRATE:
@@ -159,9 +159,25 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 //		}
 //		if (willCollide || btnPressed >= 0)
 //			break;
-}
+	}
 	if (!willCollide)
-		players[pNum].y++;
+		switch(dir)
+		{
+		case UP:
+			players[pNum].y--;
+			break;
+		case DOWN:
+			players[pNum].y++;
+			break;
+		case LEFT:
+			players[pNum].x--;
+			break;
+		case RIGHT:
+			players[pNum].x++;
+			break;
+		default:
+			break;
+		}
 	if (btnPressed >= 0)
 	{
 		level_ptr->doors[btnPressed].open = 1;
