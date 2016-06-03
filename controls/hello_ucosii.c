@@ -24,13 +24,11 @@ int right_buffer[BUF_SIZE];										// right speaker
 int fifospace, leftdata, rightdata;
 
 
-alt_u16 doors[MAX_DOORS][2];
-alt_u16 buttons[MAX_BUTTONS][2];
-
+Door doors[MAX_DOORS];
+Button buttons[MAX_DOORS];
+Crate crates[MAX_CRATES];
 Player players[MAX_PLAYERS];
-Level level;
-Level* level_ptr = &level;
-Button* button_ptr = &level.buttons[0];
+
 
 /* Definition of Task Stacks */
 #define   TASK_STACKSIZE       2048
@@ -79,32 +77,16 @@ void playTone(int height, int time)
 
 	}
 }
-alt_8 getButton(Button* btn_ptr, alt_u16 x, alt_u16 y)
-{
-	ALT_SEM_PEND(button, 0);
-	for (btn_ptr = &level.buttons[0]; btn_ptr != &level.buttons[MAX_BUTTONS-1]; btn_ptr++)
-	{
-		if (!btn_ptr->pressed && (btn_ptr->x > 0 && btn_ptr->y > 0))
-		{
-			if ((x == btn_ptr->x || x == btn_ptr->x+BUTTON_SIZE) && (y == btn_ptr->y || y == btn_ptr->y+BUTTON_SIZE))
-			{
-				btn_ptr->pressed = 1;
-				ALT_SEM_POST(button);
-				return btn_ptr->door;
-			}
-		}
-	}
-	ALT_SEM_POST(button);
-	return -1;
 
-}
 void movePlayer(alt_u8 pNum, alt_u8 dir)
 {
+	alt_u8 err;
 	alt_u8 willCollide = 0;
 	alt_8 btnPressed = -1;
 	alt_u16 x, y, p, p0, p1;
 	alt_u16 color;
 	alt_u16 pX, pY;
+	alt_u8 i =0;
 
 	switch(dir)
 	{
@@ -141,11 +123,31 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 			x = p;
 		else if (dir == LEFT || dir == RIGHT)
 			y = p;
-		if (*(pixel_buffer + (y << 9) + x) != BG_COLOR)
+		if (*(pixel_buffer + (y << 9) + x) == -1 || *(pixel_buffer + (y << 9) + x) ==4095)
 		{
 			willCollide = 1;
 			break;
 		}
+		else if (*(pixel_buffer + (y << 9) + x) == 3840)
+		{
+			willCollide = 0;
+			for(i = 0;i<MAX_BUTTONS;i++)
+			{
+				if(((buttons[i].coords[0]*4)<=x+1 && (buttons[i].coords[0]*4)>= x-BUTTON_SIZE-1) && ((buttons[i].coords[1]*4)<=y) && ((buttons[i].coords[1]*4)>=y-BUTTON_SIZE)) //if the player is on the button
+				{
+					ALT_SEM_PEND(display,0);
+					drawRect(pixel_buffer,BG_COLOR,buttons[i].coords[0]*4,buttons[i].coords[1]*4,BUTTON_SIZE,BUTTON_SIZE);
+					if(doors[i].vert)
+						drawBox(pixel_buffer,BG_COLOR,doors[i].coords[0]*4,(doors[i].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
+					else
+						drawBox(pixel_buffer,BG_COLOR,doors[i].coords[0]*4,doors[i].coords[1]*4,DOOR_SIZE,WALL_SIZE);
+					ALT_SEM_POST(display);
+					break;
+				}
+			}
+			break;
+		}
+
 //		*(pixel_buffer + (y << 9) + x) = 0xF000;
 		if (willCollide || btnPressed >= 0)
 			break;
@@ -168,10 +170,6 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 		default:
 			break;
 		}
-	if (btnPressed >= 0)
-	{
-		level_ptr->doors[btnPressed].open = 1;
-	}
 }
 
 void PlayerTask(void* pdata)
@@ -344,7 +342,6 @@ void ControlsTask(void* pdata)
 		OSTimeDly(1);
 	}
 }
-
 short int openSDFile(alt_up_sd_card_dev * sd_card,char name[])
 {
 	if (sd_card!=NULL){
@@ -367,67 +364,91 @@ short int openSDFile(alt_up_sd_card_dev * sd_card,char name[])
 	return alt_up_sd_card_fopen(name,0);
 
 }
+void InitLevelTask(void* pdata)
+{
+	alt_u8 err;
+	alt_sem_pend(level_sem,0);
+	alt_up_sd_card_dev * sd_card;
+		sd_card = alt_up_sd_card_open_dev("/dev/SD_Card");
+		short int file = openSDFile(sd_card,"level.txt");
+		if(file == -1)
+		{
+			printf("fucking kill me now\n");
+		}
+		fillScreen(pixel_buffer, 0x00F0);
+		waitForVSync(buffer_register, dma_control);
+		char pix =  alt_up_sd_card_read(file);
+		int count = 0;
+		int county= 0;
+		int doortrig[4] = {999,999,999,999};
+		alt_u8 vert;
+		while(pix != EOF)
+		{
+			if(pix == '1')
+			{
+				drawBox(pixel_buffer,WALL_COLOR,count*4,county*4,4,4);
+			}
+			else if(pix == '\n')
+			{
+				county++;
+				count =-1;
+			}
+			else if(pix == '!' && vert == 0)
+			{
+				doortrig[0] = count;
+				doortrig[1] = county;
+			}
+			else if(pix == '#')
+			{
+				drawRect(pixel_buffer,WALL_CRATE_COLOR,count*4,county*4+1,WALL_SIZE,DOOR_SIZE-2);
+			}
+			else if(pix == '+')
+			{
+				drawBox(pixel_buffer,CRATE_COLOR,count*4,county*4,PLAYER_SIZE,PLAYER_SIZE);
+			}
+
+
+			if(count -1 == doortrig[0] && county == doortrig[1] && pix != ' ')
+			{
+				drawBox(pixel_buffer,DOOR_COLOR,(count-1)*4,county*4,DOOR_SIZE,WALL_SIZE);
+				doors[pix-50].coords[0] = count -1;
+				doors[pix-50].coords[1] = county;
+				doors[pix-50].vert = 0;
+			}
+			else if(count-1 == doortrig[0] && county == doortrig[1] && pix == ' ' )
+			{
+				vert = 1;
+			}
+			else if(vert == 1 && count == doortrig[0] && county-1 == doortrig[1] && pix != ' ')
+			{
+				drawBox(pixel_buffer,DOOR_COLOR,(count)*4,(county*4)-3,WALL_SIZE,DOOR_SIZE);
+				doors[pix-50].coords[0] = count;
+				doors[pix-50].coords[1] = county -1;
+				doors[pix-50].vert = 1;
+				vert = 0;
+			}
+			else if(pix > '1')
+			{
+				drawRect(pixel_buffer,BUTTON_COLOR,count*4,county*4,BUTTON_SIZE,BUTTON_SIZE);
+				buttons[pix-50].coords[0] = count;
+				buttons[pix-50].coords[1] = county;
+
+			}
+
+
+			pix =  alt_up_sd_card_read(file);
+			count++;
+		}
+		ALT_SEM_POST(level_sem);
+		OSTaskDel(OS_PRIO_SELF);
+}
+
+
+
+
 int main (void){
 	OSInit();
-	level_ptr->map = malloc(sizeof(alt_u16)*4800);
-	alt_up_sd_card_dev * sd_card;
-	sd_card = alt_up_sd_card_open_dev("/dev/SD_Card");
-	short int file = openSDFile(sd_card,"level.txt");
-	if(file == -1)
-	{
-		printf("fucking kill me now\n");
-	}
-	fillScreen(pixel_buffer, 0x00F0);
-	waitForVSync(buffer_register, dma_control);
-	char pix =  alt_up_sd_card_read(file);
-	int count = 0;
-	int county= 0;
-	int doortrig[2] = {999,999};
-	alt_u8 vert;
-	while(pix != EOF)
-	{
-		if(pix == '1')
-		{
-			drawBox(pixel_buffer,WALL_COLOR,count*4,county*4,4,4);
-		}
-		else if(pix == '\n')
-		{
-			county++;
-			count =-1;
-		}
-		else if(pix == 'd' && vert == 0)
-		{
-			doortrig[0] = count;
-			doortrig[1] = county;
-		}
 
-		if(count -1 == doortrig[0] && county == doortrig[1] && pix != ' ')
-		{
-			drawBox(pixel_buffer,DOOR_COLOR,(count-1)*4,county*4,16,4);
-//			level_ptr->doors[(int)pix-50]->btn = (int)pix-50;
-//			level_ptr->doors[(int)pix-50]->open = 0;
-//			level_ptr->doors[(int)pix-50]->x = count -1;
-//			level_ptr->doors[(int)pix-50]->y = county;
-//			level_ptr->doors[(int)pix-50]->opening = 1;
-		}
-		else if(count-1 == doortrig[0] && county == doortrig[1] && pix == ' ' )
-		{
-			vert = 1;
-		}
-		if(vert == 1 && count == doortrig[0] && county-1 == doortrig[1] && pix != ' ')
-		{
-			drawBox(pixel_buffer,DOOR_COLOR,(count)*4,(county-1)*4,4,16);
-//			level_ptr->doors[(int)pix-50]->btn = (int)pix-50;
-//			level_ptr->doors[(int)pix-50]->open = 0;
-//			level_ptr->doors[(int)pix-50]->x = count -1;
-//			level_ptr->doors[(int)pix-50]->y = county;
-//			level_ptr->doors[(int)pix-50]->opening = 1;
-			vert = 0;
-		}
-
-		pix =  alt_up_sd_card_read(file);
-		count++;
-	}
 
 	int err = ALT_SEM_CREATE(&display, 1);
 	if(err != 0)
@@ -456,7 +477,15 @@ int main (void){
 
 	//Call find_files on the root directory
 	alt_u8 pNum;
-
+	OSTaskCreateExt(InitLevelTask,
+			0,
+			(void *)&InitLevelTask_STK[TASK_STACKSIZE-1],
+			INITLEVEL_PRIORITY,
+			INITLEVEL_PRIORITY,
+			InitLevelTask_STK,
+			TASK_STACKSIZE,
+			NULL,
+			0);
 	OSTaskCreateExt(ControlsTask,
 			0,
 			(void *)&ControlsTask_STK[TASK_STACKSIZE-1],

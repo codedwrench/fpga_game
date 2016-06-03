@@ -13,13 +13,14 @@
 #define BG_COLOR 0x00F0
 #define WALL_COLOR 0xFFFF
 #define WALL_CRATE_COLOR 0xFFF0
+#define CRATE_COLOR 0xF000
 #define PLAYER_COLOR 0xFF00
 #define BUTTON_COLOR 0x0F00
 #define DOOR_COLOR 0x0FFF
 #define PLAYER_SPEED 5 				// OSTimeDly in player task
 #define MAX_BUTTONS 20
 #define MAX_DOORS 20
-
+#define MAX_CRATES 1
 
 typedef struct Player {
 	alt_u16 x, y;
@@ -29,24 +30,16 @@ typedef struct Player {
 } Player;
 
 typedef struct Button {
-	alt_u16 x, y;
-	alt_u8 door;
-	alt_u8 pressed;
-	alt_u8 pressing;
+	alt_u8 coords[2];
 } Button;
 
 typedef struct Door {
-	alt_u16 x, y;
-	alt_u8 btn;
-	alt_u8 open;
-	alt_u8 opening;
+	alt_u8 coords[2];
+	alt_u8 vert;
 } Door;
-
-typedef struct Level {
-	alt_u8  * map;
-	Button buttons[MAX_BUTTONS];
-	Door doors[MAX_DOORS];
-} Level;
+typedef struct Crate {
+	alt_u8 coords[2];
+} Crate;
 
 typedef enum ObjectType {
 	GROUND,
