@@ -128,9 +128,9 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 			willCollide = 1;
 			break;
 		}
-		else if (*(pixel_buffer + (y << 9) + x) == 3840)
+		else if (*(pixel_buffer + (y << 9) + x) == 3840) //player has stepped on a button
 		{
-			willCollide = 0;
+			willCollide = 0; //player does
 			for(i = 0;i<MAX_BUTTONS;i++)
 			{
 				if(((buttons[i].coords[0]*4)<=x+1 && (buttons[i].coords[0]*4)>= x-BUTTON_SIZE-1) && ((buttons[i].coords[1]*4)<=y) && ((buttons[i].coords[1]*4)>=y-BUTTON_SIZE)) //if the player is on the button
@@ -145,14 +145,68 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 					break;
 				}
 			}
-			break;
+		}
+		else if (*(pixel_buffer + (y << 9) + x) == -3072)
+		{
+
+			if(crates[i].coords[0]==x && dir == RIGHT && *(pixel_buffer + (y << 9) + crates[i].coords[0]+PLAYER_SIZE+1) != -1)//player is left of crate
+			{
+				if(*(pixel_buffer + (y << 9) + crates[i].coords[0]+9) ==  -16)
+				{
+					drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					crates[i].coords[0] += 17;
+					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+				}
+				else
+				{
+					drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0]+1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					crates[i].coords[0]++;
+				}
+			}
+			else if(crates[i].coords[0]+PLAYER_SIZE==x && dir == LEFT &&( *(pixel_buffer + (y << 9) + crates[i].coords[0]-1) != -1&&*(pixel_buffer + (y << 9) + crates[i].coords[0]-1) != 4095))//player is right of crate
+			{
+				if(*(pixel_buffer + (y << 9) + crates[i].coords[0]-1) ==  -16)
+				{
+					drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					crates[i].coords[0] -= 17;
+					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+				}
+				else
+				{
+					drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0]-1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					crates[i].coords[0]--;
+				}
+			}
+			else if(crates[i].coords[1] == y && dir == DOWN && (*(pixel_buffer + ((crates[i].coords[1]+PLAYER_SIZE+1) << 9) + x) != -1 && *(pixel_buffer + ((crates[i].coords[1]+PLAYER_SIZE+1) << 9) + x) != 4095))//player is above crate
+			{
+				drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+				drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1]+1,PLAYER_SIZE,PLAYER_SIZE);
+				crates[i].coords[1]++;
+			}
+			else if(crates[i].coords[1]+8==y&& dir == UP && (*(pixel_buffer + ((crates[i].coords[1]-1) << 9) + x) != -1 &&*(pixel_buffer + ((crates[i].coords[1]-1) << 9) + x) != 4095))//player is below crate
+			{
+				drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+				drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0]-1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+				crates[i].coords[1]--;
+			}
+			else
+			{
+				willCollide = 1;
+			}
+		}
+		else if (*(pixel_buffer + (y << 9) + x) == -16)
+		{
+			willCollide = 1;
 		}
 
-//		*(pixel_buffer + (y << 9) + x) = 0xF000;
+		//		*(pixel_buffer + (y << 9) + x) = 0xF000;
 		if (willCollide || btnPressed >= 0)
 			break;
 	}
 	if (!willCollide)
+	{
 		switch(dir)
 		{
 		case UP:
@@ -170,6 +224,7 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 		default:
 			break;
 		}
+	}
 }
 
 void PlayerTask(void* pdata)
@@ -369,78 +424,81 @@ void InitLevelTask(void* pdata)
 	alt_u8 err;
 	alt_sem_pend(level_sem,0);
 	alt_up_sd_card_dev * sd_card;
-		sd_card = alt_up_sd_card_open_dev("/dev/SD_Card");
-		short int file = openSDFile(sd_card,"level.txt");
-		if(file == -1)
+	sd_card = alt_up_sd_card_open_dev("/dev/SD_Card");
+	short int file = openSDFile(sd_card,"level.txt");
+	if(file == -1)
+	{
+		printf("fucking kill me now\n");
+	}
+	fillScreen(pixel_buffer, 0x00F0);
+	waitForVSync(buffer_register, dma_control);
+	char pix =  alt_up_sd_card_read(file);
+	int count = 0;
+	int county= 0;
+	int countcrate = 0;
+	int doortrig[4] = {999,999,999,999};
+	alt_u8 vert;
+	while(pix != EOF)
+	{
+		if(pix == '1')
 		{
-			printf("fucking kill me now\n");
+			drawBox(pixel_buffer,WALL_COLOR,count*4,county*4,4,4);
 		}
-		fillScreen(pixel_buffer, 0x00F0);
-		waitForVSync(buffer_register, dma_control);
-		char pix =  alt_up_sd_card_read(file);
-		int count = 0;
-		int county= 0;
-		int doortrig[4] = {999,999,999,999};
-		alt_u8 vert;
-		while(pix != EOF)
+		else if(pix == '\n')
 		{
-			if(pix == '1')
-			{
-				drawBox(pixel_buffer,WALL_COLOR,count*4,county*4,4,4);
-			}
-			else if(pix == '\n')
-			{
-				county++;
-				count =-1;
-			}
-			else if(pix == '!' && vert == 0)
-			{
-				doortrig[0] = count;
-				doortrig[1] = county;
-			}
-			else if(pix == '#')
-			{
-				drawRect(pixel_buffer,WALL_CRATE_COLOR,count*4,county*4+1,WALL_SIZE,DOOR_SIZE-2);
-			}
-			else if(pix == '+')
-			{
-				drawBox(pixel_buffer,CRATE_COLOR,count*4,county*4,PLAYER_SIZE,PLAYER_SIZE);
-			}
-
-
-			if(count -1 == doortrig[0] && county == doortrig[1] && pix != ' ')
-			{
-				drawBox(pixel_buffer,DOOR_COLOR,(count-1)*4,county*4,DOOR_SIZE,WALL_SIZE);
-				doors[pix-50].coords[0] = count -1;
-				doors[pix-50].coords[1] = county;
-				doors[pix-50].vert = 0;
-			}
-			else if(count-1 == doortrig[0] && county == doortrig[1] && pix == ' ' )
-			{
-				vert = 1;
-			}
-			else if(vert == 1 && count == doortrig[0] && county-1 == doortrig[1] && pix != ' ')
-			{
-				drawBox(pixel_buffer,DOOR_COLOR,(count)*4,(county*4)-3,WALL_SIZE,DOOR_SIZE);
-				doors[pix-50].coords[0] = count;
-				doors[pix-50].coords[1] = county -1;
-				doors[pix-50].vert = 1;
-				vert = 0;
-			}
-			else if(pix > '1')
-			{
-				drawRect(pixel_buffer,BUTTON_COLOR,count*4,county*4,BUTTON_SIZE,BUTTON_SIZE);
-				buttons[pix-50].coords[0] = count;
-				buttons[pix-50].coords[1] = county;
-
-			}
-
-
-			pix =  alt_up_sd_card_read(file);
-			count++;
+			county++;
+			count =-1;
 		}
-		ALT_SEM_POST(level_sem);
-		OSTaskDel(OS_PRIO_SELF);
+		else if(pix == '!' && vert == 0)
+		{
+			doortrig[0] = count;
+			doortrig[1] = county;
+		}
+		else if(pix == '#')
+		{
+			drawRect(pixel_buffer,WALL_CRATE_COLOR,count*4,county*4+1,WALL_SIZE,DOOR_SIZE-2);
+		}
+		else if(pix == '+')
+		{
+			drawBox(pixel_buffer,CRATE_COLOR,count*4,county*4,PLAYER_SIZE,PLAYER_SIZE);
+			crates[countcrate].coords[0] = count*4;
+			crates[countcrate].coords[1] = county*4;
+		}
+
+
+		if(count -1 == doortrig[0] && county == doortrig[1] && pix != ' ')
+		{
+			drawBox(pixel_buffer,DOOR_COLOR,(count-1)*4,county*4,DOOR_SIZE,WALL_SIZE);
+			doors[pix-50].coords[0] = count -1;
+			doors[pix-50].coords[1] = county;
+			doors[pix-50].vert = 0;
+		}
+		else if(count-1 == doortrig[0] && county == doortrig[1] && pix == ' ' )
+		{
+			vert = 1;
+		}
+		else if(vert == 1 && count == doortrig[0] && county-1 == doortrig[1] && pix != ' ')
+		{
+			drawBox(pixel_buffer,DOOR_COLOR,(count)*4,(county*4)-3,WALL_SIZE,DOOR_SIZE);
+			doors[pix-50].coords[0] = count;
+			doors[pix-50].coords[1] = county -1;
+			doors[pix-50].vert = 1;
+			vert = 0;
+		}
+		else if(pix > '1')
+		{
+			drawRect(pixel_buffer,BUTTON_COLOR,count*4,county*4,BUTTON_SIZE,BUTTON_SIZE);
+			buttons[pix-50].coords[0] = count;
+			buttons[pix-50].coords[1] = county;
+
+		}
+
+
+		pix =  alt_up_sd_card_read(file);
+		count++;
+	}
+	ALT_SEM_POST(level_sem);
+	OSTaskDel(OS_PRIO_SELF);
 }
 
 

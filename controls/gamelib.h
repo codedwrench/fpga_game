@@ -13,7 +13,7 @@
 #define BG_COLOR 0x00F0
 #define WALL_COLOR 0xFFFF
 #define WALL_CRATE_COLOR 0xFFF0
-#define CRATE_COLOR 0xF000
+#define CRATE_COLOR 0xF400
 #define PLAYER_COLOR 0xFF00
 #define BUTTON_COLOR 0x0F00
 #define DOOR_COLOR 0x0FFF
@@ -38,7 +38,7 @@ typedef struct Door {
 	alt_u8 vert;
 } Door;
 typedef struct Crate {
-	alt_u8 coords[2];
+	alt_u16 coords[2];
 } Crate;
 
 typedef enum ObjectType {
