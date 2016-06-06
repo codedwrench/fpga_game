@@ -16,10 +16,11 @@
 #define CRATE_COLOR 0xF400
 #define PLAYER_COLOR 0xFF00
 #define BUTTON_COLOR 0x0F00
+#define BUTTON_CRATE_COLOR 0xF000
 #define DOOR_COLOR 0x0FFF
-#define PLAYER_SPEED 5 				// OSTimeDly in player task
-#define MAX_BUTTONS 20
-#define MAX_DOORS 20
+#define PLAYER_SPEED 5 				// OSTimeDly in player ask
+#define MAX_BUTTONS 30
+#define MAX_DOORS 30
 #define MAX_CRATES 1
 
 typedef struct Player {
@@ -36,6 +37,7 @@ typedef struct Button {
 typedef struct Door {
 	alt_u8 coords[2];
 	alt_u8 vert;
+	alt_u8 spikes;
 } Door;
 typedef struct Crate {
 	alt_u16 coords[2];

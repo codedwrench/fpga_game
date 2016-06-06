@@ -135,65 +135,78 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 			{
 				if(((buttons[i].coords[0]*4)<=x+1 && (buttons[i].coords[0]*4)>= x-BUTTON_SIZE-1) && ((buttons[i].coords[1]*4)<=y) && ((buttons[i].coords[1]*4)>=y-BUTTON_SIZE)) //if the player is on the button
 				{
-					ALT_SEM_PEND(display,0);
 					drawRect(pixel_buffer,BG_COLOR,buttons[i].coords[0]*4,buttons[i].coords[1]*4,BUTTON_SIZE,BUTTON_SIZE);
 					if(doors[i].vert)
 						drawBox(pixel_buffer,BG_COLOR,doors[i].coords[0]*4,(doors[i].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
 					else
 						drawBox(pixel_buffer,BG_COLOR,doors[i].coords[0]*4,doors[i].coords[1]*4,DOOR_SIZE,WALL_SIZE);
-					ALT_SEM_POST(display);
 					break;
 				}
 			}
 		}
 		else if (*(pixel_buffer + (y << 9) + x) == -3072)
 		{
-
-			if(crates[i].coords[0]==x && dir == RIGHT && *(pixel_buffer + (y << 9) + crates[i].coords[0]+PLAYER_SIZE+1) != -1)//player is left of crate
+			for(i =0;i<MAX_CRATES;i++)
 			{
-				if(*(pixel_buffer + (y << 9) + crates[i].coords[0]+9) ==  -16)
+				if(crates[i].coords[0]==x && dir == RIGHT && *(pixel_buffer + (y << 9) + crates[i].coords[0]+PLAYER_SIZE+1) != -1)//player is left of crate
+				{
+					if(*(pixel_buffer + (y << 9) + crates[i].coords[0]+9) ==  -16)
+					{
+						drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						crates[i].coords[0] += 17;
+						drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					}
+					else
+					{
+						drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0]+1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						crates[i].coords[0]++;
+					}
+				}
+				else if(crates[i].coords[0]+PLAYER_SIZE==x && dir == LEFT &&( *(pixel_buffer + (y << 9) + crates[i].coords[0]-1) != -1&&*(pixel_buffer + (y << 9) + crates[i].coords[0]-1) != 4095))//player is right of crate
+				{
+					if(*(pixel_buffer + (y << 9) + crates[i].coords[0]-1) ==  -16)
+					{
+						drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						crates[i].coords[0] -= 17;
+						drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					}
+					else
+					{
+						drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0]-1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						crates[i].coords[0]--;
+					}
+				}
+				else if(crates[i].coords[1] == y && dir == DOWN && (*(pixel_buffer + ((crates[i].coords[1]+PLAYER_SIZE+1) << 9) + x) != -1 && *(pixel_buffer + ((crates[i].coords[1]+PLAYER_SIZE+1) << 9) + x) != 4095))//player is above crate
 				{
 					drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					crates[i].coords[0] += 17;
-					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1]+1,PLAYER_SIZE,PLAYER_SIZE);
+					crates[i].coords[1]++;
+				}
+				else if(crates[i].coords[1]+8==y&& dir == UP && (*(pixel_buffer + ((crates[i].coords[1]-1) << 9) + x) != -1 &&*(pixel_buffer + ((crates[i].coords[1]-1) << 9) + x) != 4095))//player is below crate
+				{
+					drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1]-1,PLAYER_SIZE,PLAYER_SIZE);
+					crates[i].coords[1]--;
 				}
 				else
 				{
-					drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0]+1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					crates[i].coords[0]++;
+					willCollide = 1;
 				}
-			}
-			else if(crates[i].coords[0]+PLAYER_SIZE==x && dir == LEFT &&( *(pixel_buffer + (y << 9) + crates[i].coords[0]-1) != -1&&*(pixel_buffer + (y << 9) + crates[i].coords[0]-1) != 4095))//player is right of crate
-			{
-				if(*(pixel_buffer + (y << 9) + crates[i].coords[0]-1) ==  -16)
+				alt_u8 cnt;
+				for(cnt = 0; cnt < MAX_BUTTONS;cnt++)
 				{
-					drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					crates[i].coords[0] -= 17;
+					if(crates[i].coords[0] >= buttons[cnt].coords[0]*4 - 4 && crates[i].coords[0] <= buttons[cnt].coords[0]*4 + 4 && crates[i].coords[1] >= buttons[cnt].coords[1]*4-4 && crates[i].coords[1] <= buttons[cnt].coords[1]*4+4)
+					{
+						buttons[cnt].coords[0]= 0;
 					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						if(doors[cnt].vert)
+							drawBox(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4,(doors[cnt].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
+						else
+							drawBox(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4+1,doors[cnt].coords[1]*4,DOOR_SIZE,WALL_SIZE);
+					}
 				}
-				else
-				{
-					drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0]-1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					crates[i].coords[0]--;
-				}
-			}
-			else if(crates[i].coords[1] == y && dir == DOWN && (*(pixel_buffer + ((crates[i].coords[1]+PLAYER_SIZE+1) << 9) + x) != -1 && *(pixel_buffer + ((crates[i].coords[1]+PLAYER_SIZE+1) << 9) + x) != 4095))//player is above crate
-			{
-				drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-				drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1]+1,PLAYER_SIZE,PLAYER_SIZE);
-				crates[i].coords[1]++;
-			}
-			else if(crates[i].coords[1]+8==y&& dir == UP && (*(pixel_buffer + ((crates[i].coords[1]-1) << 9) + x) != -1 &&*(pixel_buffer + ((crates[i].coords[1]-1) << 9) + x) != 4095))//player is below crate
-			{
-				drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-				drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0]-1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-				crates[i].coords[1]--;
-			}
-			else
-			{
-				willCollide = 1;
 			}
 		}
 		else if (*(pixel_buffer + (y << 9) + x) == -16)
@@ -201,6 +214,19 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 			willCollide = 1;
 		}
 
+		for(i = 0;i<MAX_CRATES;i++)
+		{
+					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+		}
+		for(i = 20;i<MAX_BUTTONS;i++)
+
+			{
+			if(buttons[i].coords[0] != 0)
+			{
+					drawRect(pixel_buffer,BUTTON_CRATE_COLOR,buttons[i].coords[0]*4,buttons[i].coords[1]*4,BUTTON_SIZE,BUTTON_SIZE);
+			}
+
+	}
 		//		*(pixel_buffer + (y << 9) + x) = 0xF000;
 		if (willCollide || btnPressed >= 0)
 			break;
@@ -437,7 +463,8 @@ void InitLevelTask(void* pdata)
 	int county= 0;
 	int countcrate = 0;
 	int doortrig[4] = {999,999,999,999};
-	alt_u8 vert;
+	alt_u8 vert = 0;
+	alt_u8 spikes= 0;
 	while(pix != EOF)
 	{
 		if(pix == '1')
@@ -449,10 +476,18 @@ void InitLevelTask(void* pdata)
 			county++;
 			count =-1;
 		}
-		else if(pix == '!' && vert == 0)
+		else if((pix == '!'||pix == '"') && vert == 0)
 		{
 			doortrig[0] = count;
 			doortrig[1] = county;
+			if(pix == '"')
+			{
+				spikes = 1;
+			}
+			else
+			{
+				spikes = 0;
+			}
 		}
 		else if(pix == '#')
 		{
@@ -468,10 +503,22 @@ void InitLevelTask(void* pdata)
 
 		if(count -1 == doortrig[0] && county == doortrig[1] && pix != ' ')
 		{
-			drawBox(pixel_buffer,DOOR_COLOR,(count-1)*4,county*4,DOOR_SIZE,WALL_SIZE);
 			doors[pix-50].coords[0] = count -1;
 			doors[pix-50].coords[1] = county;
 			doors[pix-50].vert = 0;
+			doors[pix-50].spikes = spikes;
+			alt_8 i = 0;
+			if(doors[pix-50].spikes == 1)
+			{
+				for(i=0;i<8;i++)
+				{
+				drawLine(pixel_buffer,0xAAAA,(count)*4+i*2-1,(county*4),(count)*4+i*2-1,(county*4)+4);
+				}
+			}
+			else
+			{
+				drawBox(pixel_buffer,DOOR_COLOR,(count-1)*4,county*4,DOOR_SIZE,WALL_SIZE);
+			}
 		}
 		else if(count-1 == doortrig[0] && county == doortrig[1] && pix == ' ' )
 		{
@@ -485,12 +532,18 @@ void InitLevelTask(void* pdata)
 			doors[pix-50].vert = 1;
 			vert = 0;
 		}
-		else if(pix > '1')
+		else if(pix > '1' && pix < 'F')
 		{
 			drawRect(pixel_buffer,BUTTON_COLOR,count*4,county*4,BUTTON_SIZE,BUTTON_SIZE);
 			buttons[pix-50].coords[0] = count;
 			buttons[pix-50].coords[1] = county;
 
+		}
+		else if(pix >= 'F')
+		{
+			drawRect(pixel_buffer,BUTTON_CRATE_COLOR,count*4,county*4,BUTTON_SIZE,BUTTON_SIZE);
+			buttons[pix-50].coords[0] = count;
+			buttons[pix-50].coords[1] = county;
 		}
 
 
