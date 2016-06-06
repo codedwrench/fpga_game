@@ -151,7 +151,7 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 					if(doors[i].vert)
 						drawBox(pixel_buffer,BG_COLOR,doors[i].coords[0]*4,(doors[i].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
 					else
-						drawBox(pixel_buffer,BG_COLOR,doors[i].coords[0]*4,doors[i].coords[1]*4,DOOR_SIZE,WALL_SIZE);
+						drawBox(pixel_buffer,BG_COLOR,doors[i].coords[0]*4+1,doors[i].coords[1]*4,DOOR_SIZE,WALL_SIZE);
 					break;
 				}
 			}
@@ -224,6 +224,10 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 		else if (*(pixel_buffer + (y << 9) + x) == -16)
 		{
 			willCollide = 1;
+		}
+		else if(*(pixel_buffer + (y<<9)+x)== -21846)
+		{
+			addPenalty(2);
 		}
 
 		for(i = 0;i<MAX_CRATES;i++)
@@ -714,7 +718,7 @@ void InitLevelTask(void* pdata)
 			}
 			else
 			{
-				drawBox(pixel_buffer,DOOR_COLOR,(count-1)*4,county*4,DOOR_SIZE,WALL_SIZE);
+				drawBox(pixel_buffer,DOOR_COLOR,(count-1)*4+1,county*4,DOOR_SIZE,WALL_SIZE);
 			}
 		}
 		else if(count-1 == doortrig[0] && county == doortrig[1] && pix == ' ' )
