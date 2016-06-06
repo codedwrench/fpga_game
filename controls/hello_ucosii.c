@@ -709,7 +709,7 @@ void InitLevelTask(void* pdata)
 			{
 				for(i=0;i<8;i++)
 				{
-					drawLine(pixel_buffer,0xAAAA,(count)*4+i*2-1,(county*4),(count)*4+i*2-1,(county*4)+4);
+				drawLine(pixel_buffer,SPIKE_COLOR,(count)*4+i*2-1,(county*4),(count)*4+i*2-1,(county*4)+4);
 				}
 			}
 			else
