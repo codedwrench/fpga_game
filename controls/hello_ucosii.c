@@ -48,11 +48,16 @@ ALT_SEM(level_sem)
 ALT_SEM(timer)
 
 /* Definition of Task Priorities */
+//#define INITLEVEL_PRIORITY		5	5
+//#define TIMER_PRIORITY			6	9
+//#define DRAWTIMER_PRIORITY		7	10
+//#define CONTROLS_PRIORITY		8	6
+//#define PLAYER_PRIORITY			9	7
 #define INITLEVEL_PRIORITY		5
-#define TIMER_PRIORITY			6
-#define DRAWTIMER_PRIORITY		7
-#define CONTROLS_PRIORITY		8
-#define PLAYER_PRIORITY			9
+#define TIMER_PRIORITY			9
+#define DRAWTIMER_PRIORITY		10
+#define CONTROLS_PRIORITY		6
+#define PLAYER_PRIORITY			7
 
 void playTone(int height, int time)
 {
@@ -125,6 +130,7 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 	}
 	for (p = p0; p < p1; p++)
 	{
+//		OSTimeDly(2);
 		if (dir == UP || dir == DOWN)
 			x = p;
 		else if (dir == LEFT || dir == RIGHT)
@@ -206,7 +212,7 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 					if(crates[i].coords[0] >= buttons[cnt].coords[0]*4 - 4 && crates[i].coords[0] <= buttons[cnt].coords[0]*4 + 4 && crates[i].coords[1] >= buttons[cnt].coords[1]*4-4 && crates[i].coords[1] <= buttons[cnt].coords[1]*4+4)
 					{
 						buttons[cnt].coords[0]= 0;
-					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
 						if(doors[cnt].vert)
 							drawBox(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4,(doors[cnt].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
 						else
@@ -222,17 +228,16 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 
 		for(i = 0;i<MAX_CRATES;i++)
 		{
-					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+			drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
 		}
 		for(i = 20;i<MAX_BUTTONS;i++)
-
-			{
+		{
 			if(buttons[i].coords[0] != 0)
 			{
-					drawRect(pixel_buffer,BUTTON_CRATE_COLOR,buttons[i].coords[0]*4,buttons[i].coords[1]*4,BUTTON_SIZE,BUTTON_SIZE);
+				drawRect(pixel_buffer,BUTTON_CRATE_COLOR,buttons[i].coords[0]*4,buttons[i].coords[1]*4,BUTTON_SIZE,BUTTON_SIZE);
 			}
 
-	}
+		}
 		//		*(pixel_buffer + (y << 9) + x) = 0xF000;
 		if (willCollide || btnPressed >= 0)
 			break;
@@ -346,6 +351,7 @@ alt_8 checkScore()
 			{
 				break;
 			}
+			OSTimeDly(1);
 		}
 	}
 	return result;
@@ -414,7 +420,7 @@ void DrawTimerTask(void *pdata)
 		drawText(character_buffer, highScores[2][0], 2, 4);
 		drawText(character_buffer, highScores[2][1], 10, 4);
 
-		OSTimeDly(10);
+		OSTimeDly(100);
 
 	}
 }
@@ -430,13 +436,13 @@ void TimerTask(void *pdata)
 			sec = 0;
 			min = (min + 1) % 60;
 		}
-		OSTimeDlyHMSM(0, 0, 1, 0);
 		ALT_SEM_POST(timer);
+		OSTimeDlyHMSM(0, 0, 1, 0);
 	}
 }
 void PlayerTask(void* pdata)
 {
-	ALT_SEM_PEND(player, 0);
+//	ALT_SEM_PEND(player, 0);
 
 	alt_u8 pNum = (alt_u8*) pdata;
 
@@ -445,13 +451,15 @@ void PlayerTask(void* pdata)
 	drawBox(pixel_buffer, PLAYER_COLOR/(pNum+1), players[pNum].x, players[pNum].y, PLAYER_SIZE, PLAYER_SIZE);
 	ALT_SEM_POST(display);
 
-	ALT_SEM_POST(player);
+//	ALT_SEM_POST(player);
 	while(1)
 	{
 		waitForVSync(buffer_register, dma_control);
-		OSTimeDly(PLAYER_SPEED);
+//		OSTimeDly(PLAYER_SPEED);
+//		OSTimeDly(100);
+		OSTimeDly(20);
 
-		ALT_SEM_PEND(player, 0);
+		//		ALT_SEM_PEND(player, 0);
 		if(players[pNum].yDir == DOWN)
 		{
 			movePlayer(pNum, DOWN);
@@ -459,25 +467,29 @@ void PlayerTask(void* pdata)
 		else if(players[pNum].yDir == UP)
 		{
 			movePlayer(pNum, UP);
+//			OSTimeDly(1);
 		}
 		if(players[pNum].xDir == RIGHT)
 		{
 			movePlayer(pNum, RIGHT);
+//			OSTimeDly(1);
 		}
 		else if(players[pNum].xDir == LEFT)
 		{
 			movePlayer(pNum, LEFT);
+//			OSTimeDly(1);
 		}
 
 		if (players[pNum].action == 2)
 		{
+//			OSTimeDly(1);
 			addPenalty(10);
 			players[pNum].action = -1;
 		}
 		if (players[pNum].action == 3)
 		{
-//			scoreStatus = checkScore();
-			setScore(checkScore());
+			//			scoreStatus = checkScore();
+			//			setScore(checkScore());
 			players[pNum].action = -1;
 		}
 
@@ -487,7 +499,7 @@ void PlayerTask(void* pdata)
 		drawBox(pixel_buffer, PLAYER_COLOR/(pNum+1), players[pNum].x, players[pNum].y, PLAYER_SIZE, PLAYER_SIZE);
 		ALT_SEM_POST(display);
 
-		ALT_SEM_POST(player);
+		//		ALT_SEM_POST(player);
 	}
 }
 void ControlsTask(void* pdata)
@@ -543,7 +555,7 @@ void ControlsTask(void* pdata)
 			}
 			if (cmd[0] != 0 && cmd[1] != 0 && cmd[2] != 0)
 			{
-				ALT_SEM_PEND(player, 0);
+//				ALT_SEM_PEND(player, 0);
 				pNum = cmd[0] - '0' - 1;
 
 				switch(cmd[1])
@@ -615,7 +627,7 @@ void ControlsTask(void* pdata)
 				i = 0;
 
 			}
-			ALT_SEM_POST(player);
+//			ALT_SEM_POST(player);
 
 		}
 		OSTimeDly(1);
@@ -697,7 +709,7 @@ void InitLevelTask(void* pdata)
 			{
 				for(i=0;i<8;i++)
 				{
-				drawLine(pixel_buffer,0xAAAA,(count)*4+i*2-1,(county*4),(count)*4+i*2-1,(county*4)+4);
+					drawLine(pixel_buffer,0xAAAA,(count)*4+i*2-1,(county*4),(count)*4+i*2-1,(county*4)+4);
 				}
 			}
 			else

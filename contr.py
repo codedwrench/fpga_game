@@ -2,7 +2,7 @@ import pygame
 import time
 
 from subprocess import Popen, PIPE
-process = Popen(["/mnt/ssddata/altera_lite/15.1/quartus/bin/nios-monitor-terminal","1","0"],stdin=PIPE)
+process = Popen(["C:\\altera_lite\\15.1\\quartus\\bin64\\nios-monitor-terminal.exe","1","0"],stdin=PIPE)
 pygame.init()
 pygame.joystick.init()
 joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
