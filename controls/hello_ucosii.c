@@ -5,6 +5,7 @@
 #include "includes.h"
 #include <alt_types.h>
 #include <os/alt_sem.h>
+#include <os/alt_flag.h>
 #include "graphicslib.h"
 #include "gamelib.h"
 #include <Altera_UP_SD_Card_Avalon_Interface.h>
@@ -30,8 +31,7 @@ Button buttons[MAX_DOORS];
 Crate crates[MAX_CRATES];
 Player players[MAX_PLAYERS];
 
-
-char highScores[3][2][20] = { { { 0 } } };
+char highScores[3][2][6] = { { { 0 } } };
 
 /* Definition of Task Stacks */
 #define   TASK_STACKSIZE       2048
@@ -40,12 +40,19 @@ OS_STK    ControlsTask_STK[TASK_STACKSIZE];
 OS_STK    TimerTask_STK[TASK_STACKSIZE];
 OS_STK    DrawTimerTask_STK[TASK_STACKSIZE];
 OS_STK    InitLevelTask_STK[TASK_STACKSIZE];
+OS_STK    FinishTask_STK[TASK_STACKSIZE];
+
+// Semaphores and lags
 ALT_SEM(display)
 ALT_SEM(audio)
 ALT_SEM(player)
 ALT_SEM(button)
 ALT_SEM(level_sem)
 ALT_SEM(timer)
+ALT_FLAG_GRP(finish_flag)
+
+#define FINISH_1 0x01
+#define FINISH_2 0x02
 
 /* Definition of Task Priorities */
 //#define INITLEVEL_PRIORITY		5	5
@@ -54,10 +61,11 @@ ALT_SEM(timer)
 //#define CONTROLS_PRIORITY		8	6
 //#define PLAYER_PRIORITY			9	7
 #define INITLEVEL_PRIORITY		5
-#define TIMER_PRIORITY			9
-#define DRAWTIMER_PRIORITY		10
 #define CONTROLS_PRIORITY		6
 #define PLAYER_PRIORITY			7
+#define TIMER_PRIORITY			9
+#define DRAWTIMER_PRIORITY		10
+#define FINISH_PRIORITY			11
 
 void playTone(int height, int time)
 {
@@ -229,6 +237,15 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 		{
 			addPenalty(2);
 		}
+		else if (*(pixel_buffer + (y << 9) + x) == 0)
+		{
+			willCollide = 1;
+			if (pNum == 0)
+				ALT_FLAG_POST(finish_flag, FINISH_1, OS_FLAG_SET);
+			else if (pNum == 1)
+				ALT_FLAG_POST(finish_flag, FINISH_2, OS_FLAG_SET);
+
+		}
 
 		for(i = 0;i<MAX_CRATES;i++)
 		{
@@ -301,7 +318,7 @@ void addPenalty(alt_u8 n)
 }
 void setScore(alt_8 pos)
 {
-	alt_u8 teamName[20] = { 0 };
+	alt_u8 teamName[4] = { 0 };
 
 	switch(pos)
 	{
@@ -311,7 +328,9 @@ void setScore(alt_8 pos)
 		sprintf(highScores[pos+1][0], "%s", highScores[pos][0]);
 		sprintf(highScores[pos+1][1], "%s", highScores[pos][1]);
 		sprintf(highScores[pos][0], "%.2d:%.2d", min, sec);
-		sprintf(highScores[pos][0], "%s", teamName);
+		sprintf(highScores[pos][1], "TST");
+//		sprintf(highScores[pos][0], "%.2d:%.2d", min, sec);
+//		sprintf(highScores[pos][0], "%s", teamName);
 		break;
 	case 1:
 		sprintf(highScores[pos+2][0], "%s", highScores[pos+1][0]);
@@ -337,11 +356,11 @@ alt_8 checkScore()
 {
 	alt_u8 i, j;
 	alt_8 result = -1;
-	alt_u8 score[20] = { 0 };
+	alt_u8 score[6] = { 0 };
 	sprintf(score, "%.2d:%.2d", min, sec);
-	for (i = 0; i < 3; i++)				// max highscores = 3
+	for (i = 0; i < 3; i++)
 	{
-		for (j = 0; j < 20; j++)		// max teamname length = 20
+		for (j = 0; j < 6; j++)
 		{
 			if (score[j] >= '0' && score[j] <= '9')
 			{
@@ -357,12 +376,14 @@ alt_8 checkScore()
 			}
 			OSTimeDly(1);
 		}
+		if (result >= 0)
+			break;
 	}
 	return result;
 }
 void loadScores(short int file)
 {
-	char str[20] = { 0 };
+	char str[6] = { 0 };
 	char c =  alt_up_sd_card_read(file);
 	alt_u8 pos = 0;
 	alt_u8 i = 0;
@@ -377,6 +398,7 @@ void loadScores(short int file)
 			sprintf(highScores[pos][j], "%s", str);
 			j ^= 1;
 			i = 0;
+			memset(str, 0, sizeof(str));
 			break;
 		case '\n':
 			pos++;
@@ -391,9 +413,30 @@ void loadScores(short int file)
 	}
 }
 
+void FinishTask(void *pdata)
+{
+	while (1)
+	{
+		drawText(character_buffer, "                                    ", 2, 2);
+		drawText(character_buffer, "                                    ", 2, 3);
+		drawText(character_buffer, "                                    ", 2, 4);
+
+		drawText(character_buffer, highScores[0][0], 3, 2);
+		drawText(character_buffer, highScores[0][1], 10, 2);
+		drawText(character_buffer, highScores[1][0], 3, 3);
+		drawText(character_buffer, highScores[1][1], 10, 3);
+		drawText(character_buffer, highScores[2][0], 3, 4);
+		drawText(character_buffer, highScores[2][1], 10, 4);
+
+		ALT_FLAG_PEND(finish_flag, FINISH_1 + FINISH_2, OS_FLAG_WAIT_SET_ALL , 0);
+		ALT_SEM_PEND(timer, 0);
+		setScore(checkScore());
+		OSTimeDly(50);
+	}
+}
 void DrawTimerTask(void *pdata)
 {
-	char timerStr[20];
+	char timerStr[6];
 	// Clear char buffer
 	sprintf(timerStr, "         ");
 	drawText(character_buffer, timerStr, 36, 2);
@@ -401,14 +444,8 @@ void DrawTimerTask(void *pdata)
 	// Draw timer background
 	ALT_SEM_PEND(display, 0);
 	drawBox(pixel_buffer, 0, 145, 5, 30, 8);
+	drawBox(pixel_buffer, 0, 145, 230, 30, 8);
 	ALT_SEM_POST(display);
-
-	drawText(character_buffer, "                    ", 2, 2);
-	drawText(character_buffer, "                    ", 7, 2);
-	drawText(character_buffer, "                    ", 2, 3);
-	drawText(character_buffer, "                    ", 7, 3);
-	drawText(character_buffer, "                    ", 2, 4);
-	drawText(character_buffer, "                    ", 7, 4);
 
 	while (1)
 	{
@@ -416,16 +453,7 @@ void DrawTimerTask(void *pdata)
 		sprintf(timerStr, "%.2d:%.2d", min, sec);
 		drawText(character_buffer, timerStr, 37, 2);
 		ALT_SEM_POST(timer);
-
-		drawText(character_buffer, highScores[0][0], 2, 2);
-		drawText(character_buffer, highScores[0][1], 10, 2);
-		drawText(character_buffer, highScores[1][0], 2, 3);
-		drawText(character_buffer, highScores[1][1], 10, 3);
-		drawText(character_buffer, highScores[2][0], 2, 4);
-		drawText(character_buffer, highScores[2][1], 10, 4);
-
 		OSTimeDly(100);
-
 	}
 }
 void TimerTask(void *pdata)
@@ -490,12 +518,11 @@ void PlayerTask(void* pdata)
 			addPenalty(10);
 			players[pNum].action = -1;
 		}
-		if (players[pNum].action == 3)
-		{
-			//			scoreStatus = checkScore();
-			//			setScore(checkScore());
-			players[pNum].action = -1;
-		}
+//		if (players[pNum].action == 3)
+//		{
+//			setScore(checkScore());
+//			players[pNum].action = -1;
+//		}
 
 		// Draw player
 		ALT_SEM_PEND(display, 0);
@@ -766,14 +793,17 @@ int main (void)
 	if(err != 0)
 		printf("Semaphore not created\n");
 	err = ALT_SEM_CREATE(&player, 1);
-	if(err!= 0)
+	if(err != 0)
 		printf("Semaphore not created\n");
 	err = ALT_SEM_CREATE(&timer, 1);
-	if(err!= 0)
+	if(err != 0)
 		printf("Semaphore not created\n");
 	err = ALT_SEM_CREATE(&level_sem, 1);
-	if(err!= 0)
+	if(err != 0)
 		printf("Semaphore not created\n");
+	err = ALT_FLAG_CREATE(&finish_flag, 0x00);
+	if (err != 0)
+		printf("Flag not created\n");
 
 	*(dma_control) &= (1<<2); //Enable DMA controller
 
@@ -819,6 +849,15 @@ int main (void)
 			TIMER_PRIORITY,
 			TIMER_PRIORITY,
 			TimerTask_STK,
+			TASK_STACKSIZE,
+			NULL,
+			0);
+	OSTaskCreateExt(FinishTask,
+			0,
+			(void *)&FinishTask_STK[TASK_STACKSIZE-1],
+			FINISH_PRIORITY,
+			FINISH_PRIORITY,
+			FinishTask_STK,
 			TASK_STACKSIZE,
 			NULL,
 			0);
