@@ -431,6 +431,7 @@ void TimerTask(void *pdata)
 			min = (min + 1) % 60;
 		}
 		OSTimeDlyHMSM(0, 0, 1, 0);
+		ALT_SEM_POST(timer);
 	}
 }
 void PlayerTask(void* pdata)
@@ -738,13 +739,9 @@ void InitLevelTask(void* pdata)
 	OSTaskDel(OS_PRIO_SELF);
 }
 
-
-
-
 int main (void)
 {
 	OSInit();
-
 
 	int err = ALT_SEM_CREATE(&display, 1);
 	if(err != 0)
@@ -788,6 +785,24 @@ int main (void)
 			CONTROLS_PRIORITY,
 			CONTROLS_PRIORITY,
 			ControlsTask_STK,
+			TASK_STACKSIZE,
+			NULL,
+			0);
+	OSTaskCreateExt(DrawTimerTask,
+			0,
+			(void *)&DrawTimerTask_STK[TASK_STACKSIZE-1],
+			DRAWTIMER_PRIORITY,
+			DRAWTIMER_PRIORITY,
+			DrawTimerTask_STK,
+			TASK_STACKSIZE,
+			NULL,
+			0);
+	OSTaskCreateExt(TimerTask,
+			0,
+			(void *)&TimerTask_STK[TASK_STACKSIZE-1],
+			TIMER_PRIORITY,
+			TIMER_PRIORITY,
+			TimerTask_STK,
 			TASK_STACKSIZE,
 			NULL,
 			0);
