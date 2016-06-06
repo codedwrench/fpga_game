@@ -23,6 +23,7 @@ int left_buffer[BUF_SIZE];										// left speaker
 int right_buffer[BUF_SIZE];										// right speaker
 int fifospace, leftdata, rightdata;
 
+alt_u8 sec, min;
 
 Door doors[MAX_DOORS];
 Button buttons[MAX_DOORS];
@@ -30,23 +31,29 @@ Crate crates[MAX_CRATES];
 Player players[MAX_PLAYERS];
 
 
+char highScores[3][2][20] = { { { 0 } } };
+
 /* Definition of Task Stacks */
 #define   TASK_STACKSIZE       2048
 OS_STK    PlayerTask_STK[MAX_PLAYERS][TASK_STACKSIZE];
 OS_STK    ControlsTask_STK[TASK_STACKSIZE];
-OS_STK    LevelTask_STK[TASK_STACKSIZE];
+OS_STK    TimerTask_STK[TASK_STACKSIZE];
+OS_STK    DrawTimerTask_STK[TASK_STACKSIZE];
 OS_STK    InitLevelTask_STK[TASK_STACKSIZE];
 ALT_SEM(display)
 ALT_SEM(audio)
 ALT_SEM(player)
 ALT_SEM(button)
 ALT_SEM(level_sem)
+ALT_SEM(timer)
 
 /* Definition of Task Priorities */
-#define LEVEL_PRIORITY			6
 #define INITLEVEL_PRIORITY		5
-#define PLAYER_PRIORITY			8
-#define CONTROLS_PRIORITY		7
+#define TIMER_PRIORITY			6
+#define DRAWTIMER_PRIORITY		7
+#define CONTROLS_PRIORITY		8
+#define PLAYER_PRIORITY			9
+
 void playTone(int height, int time)
 {
 	signed long high = 2147483392;
@@ -77,7 +84,6 @@ void playTone(int height, int time)
 
 	}
 }
-
 void movePlayer(alt_u8 pNum, alt_u8 dir)
 {
 	alt_u8 err;
@@ -252,7 +258,181 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 		}
 	}
 }
+short int openSDFile(alt_up_sd_card_dev* sd_card, char name[])
+{
+	if (sd_card!=NULL){
+		if (alt_up_sd_card_is_Present()){
+			printf("An SD Card was found!\n");
+		}
+		else {
+			printf("No SD Card Found. \n Exiting the program.");
+			return -1;
+		}
 
+		if (alt_up_sd_card_is_FAT16()){
+			printf("FAT-16 partiton found!\n");
+		}
+		else{
+			printf("No FAT-16 partition found - Exiting!\n");
+			return -1;
+		}
+	}
+	return alt_up_sd_card_fopen(name,0);
+}
+void addPenalty(alt_u8 n)
+{
+	ALT_SEM_PEND(timer, 0);
+	sec += n;
+	if (sec > 59)
+	{
+		sec %= 60;
+		min = (min + 1) % 60;
+	}
+	ALT_SEM_POST(timer);
+}
+void setScore(alt_8 pos)
+{
+	alt_u8 teamName[20] = { 0 };
+
+	switch(pos)
+	{
+	case 0:
+		sprintf(highScores[pos+2][0], "%s", highScores[pos+1][0]);
+		sprintf(highScores[pos+2][1], "%s", highScores[pos+1][1]);
+		sprintf(highScores[pos+1][0], "%s", highScores[pos][0]);
+		sprintf(highScores[pos+1][1], "%s", highScores[pos][1]);
+		sprintf(highScores[pos][0], "%.2d:%.2d", min, sec);
+		sprintf(highScores[pos][0], "%s", teamName);
+		break;
+	case 1:
+		sprintf(highScores[pos+2][0], "%s", highScores[pos+1][0]);
+		sprintf(highScores[pos+2][1], "%s", highScores[pos+1][1]);
+		sprintf(highScores[pos+1][0], "%s", highScores[pos][0]);
+		sprintf(highScores[pos+1][1], "%s", highScores[pos][1]);
+		sprintf(highScores[pos][0], "%.2d:%.2d", min, sec);
+		sprintf(highScores[pos][0], "%s", teamName);
+		break;
+	case 2:
+		sprintf(highScores[pos+2][0], "%s", highScores[pos+1][0]);
+		sprintf(highScores[pos+2][1], "%s", highScores[pos+1][1]);
+		sprintf(highScores[pos+1][0], "%s", highScores[pos][0]);
+		sprintf(highScores[pos+1][1], "%s", highScores[pos][1]);
+		sprintf(highScores[pos][0], "%.2d:%.2d", min, sec);
+		sprintf(highScores[pos][0], "%s", teamName);
+		break;
+	default:
+		break;
+	}
+}
+alt_8 checkScore()
+{
+	alt_u8 i, j;
+	alt_8 result = -1;
+	alt_u8 score[20] = { 0 };
+	sprintf(score, "%.2d:%.2d", min, sec);
+	for (i = 0; i < 3; i++)				// max highscores = 3
+	{
+		for (j = 0; j < 20; j++)		// max teamname length = 20
+		{
+			if (score[j] >= '0' && score[j] <= '9')
+			{
+				if (score[j] < highScores[i][0][j])
+				{
+					result = i;
+					break;
+				}
+			}
+			else if (score[j] == 0)
+			{
+				break;
+			}
+		}
+	}
+	return result;
+}
+void loadScores(short int file)
+{
+	char str[20] = { 0 };
+	char c =  alt_up_sd_card_read(file);
+	alt_u8 pos = 0;
+	alt_u8 i = 0;
+	alt_u8 j = 0;
+
+	while(c != EOF)
+	{
+		switch(c)
+		{
+		case ' ':
+		case '\r':
+			sprintf(highScores[pos][j], "%s", str);
+			j ^= 1;
+			i = 0;
+			break;
+		case '\n':
+			pos++;
+			memset(str, 0, sizeof(str));
+			break;
+		default:
+			str[i] = c;
+			i++;
+			break;
+		}
+		c =  alt_up_sd_card_read(file);
+	}
+}
+
+void DrawTimerTask(void *pdata)
+{
+	char timerStr[20];
+	// Clear char buffer
+	sprintf(timerStr, "         ");
+	drawText(character_buffer, timerStr, 36, 2);
+
+	// Draw timer background
+	ALT_SEM_PEND(display, 0);
+	drawBox(pixel_buffer, 0, 145, 5, 30, 8);
+	ALT_SEM_POST(display);
+
+	drawText(character_buffer, "                    ", 2, 2);
+	drawText(character_buffer, "                    ", 7, 2);
+	drawText(character_buffer, "                    ", 2, 3);
+	drawText(character_buffer, "                    ", 7, 3);
+	drawText(character_buffer, "                    ", 2, 4);
+	drawText(character_buffer, "                    ", 7, 4);
+
+	while (1)
+	{
+		ALT_SEM_PEND(timer, 0);
+		sprintf(timerStr, "%.2d:%.2d", min, sec);
+		drawText(character_buffer, timerStr, 37, 2);
+		ALT_SEM_POST(timer);
+
+		drawText(character_buffer, highScores[0][0], 2, 2);
+		drawText(character_buffer, highScores[0][1], 10, 2);
+		drawText(character_buffer, highScores[1][0], 2, 3);
+		drawText(character_buffer, highScores[1][1], 10, 3);
+		drawText(character_buffer, highScores[2][0], 2, 4);
+		drawText(character_buffer, highScores[2][1], 10, 4);
+
+		OSTimeDly(10);
+
+	}
+}
+void TimerTask(void *pdata)
+{
+	min = sec = 0;
+	while (1)
+	{
+		ALT_SEM_PEND(timer, 0);
+		sec++;
+		if (sec > 59)
+		{
+			sec = 0;
+			min = (min + 1) % 60;
+		}
+		OSTimeDlyHMSM(0, 0, 1, 0);
+	}
+}
 void PlayerTask(void* pdata)
 {
 	ALT_SEM_PEND(player, 0);
@@ -264,11 +444,13 @@ void PlayerTask(void* pdata)
 	drawBox(pixel_buffer, PLAYER_COLOR/(pNum+1), players[pNum].x, players[pNum].y, PLAYER_SIZE, PLAYER_SIZE);
 	ALT_SEM_POST(display);
 
+	ALT_SEM_POST(player);
 	while(1)
 	{
 		waitForVSync(buffer_register, dma_control);
 		OSTimeDly(PLAYER_SPEED);
 
+		ALT_SEM_PEND(player, 0);
 		if(players[pNum].yDir == DOWN)
 		{
 			movePlayer(pNum, DOWN);
@@ -284,6 +466,18 @@ void PlayerTask(void* pdata)
 		else if(players[pNum].xDir == LEFT)
 		{
 			movePlayer(pNum, LEFT);
+		}
+
+		if (players[pNum].action == 2)
+		{
+			addPenalty(10);
+			players[pNum].action = -1;
+		}
+		if (players[pNum].action == 3)
+		{
+//			scoreStatus = checkScore();
+			setScore(checkScore());
+			players[pNum].action = -1;
 		}
 
 		// Draw player
@@ -395,7 +589,10 @@ void ControlsTask(void* pdata)
 							players[pNum].xDir = NONE;
 					}
 					break;
+				case '1':
 				case '2':
+				case '3':
+				case '4':
 					if(cmd[2] != 'r')
 					{
 						action = cmd[1] - '0';
@@ -423,44 +620,31 @@ void ControlsTask(void* pdata)
 		OSTimeDly(1);
 	}
 }
-short int openSDFile(alt_up_sd_card_dev * sd_card,char name[])
-{
-	if (sd_card!=NULL){
-		if (alt_up_sd_card_is_Present()){
-			printf("An SD Card was found!\n");
-		}
-		else {
-			printf("No SD Card Found. \n Exiting the program.");
-			return -1;
-		}
-
-		if (alt_up_sd_card_is_FAT16()){
-			printf("FAT-16 partiton found!\n");
-		}
-		else{
-			printf("No FAT-16 partition found - Exiting!\n");
-			return -1;
-		}
-	}
-	return alt_up_sd_card_fopen(name,0);
-
-}
 void InitLevelTask(void* pdata)
 {
 	alt_u8 err;
 	alt_sem_pend(level_sem,0);
 	alt_up_sd_card_dev * sd_card;
 	sd_card = alt_up_sd_card_open_dev("/dev/SD_Card");
-	short int file = openSDFile(sd_card,"level.txt");
+	short int file = openSDFile(sd_card, "level.txt");
+	short int scoresFile = openSDFile(sd_card, "scores.txt");
+
 	if(file == -1)
 	{
 		printf("fucking kill me now\n");
 	}
+	if (scoresFile == -1)
+	{
+		printf("Can't open scores file\n");
+	}
+
+	loadScores(scoresFile);
+
 	fillScreen(pixel_buffer, 0x00F0);
 	waitForVSync(buffer_register, dma_control);
 	char pix =  alt_up_sd_card_read(file);
 	int count = 0;
-	int county= 0;
+	int county = 0;
 	int countcrate = 0;
 	int doortrig[4] = {999,999,999,999};
 	alt_u8 vert = 0;
@@ -557,7 +741,8 @@ void InitLevelTask(void* pdata)
 
 
 
-int main (void){
+int main (void)
+{
 	OSInit();
 
 
@@ -570,7 +755,7 @@ int main (void){
 	err = ALT_SEM_CREATE(&player, 1);
 	if(err!= 0)
 		printf("Semaphore not created\n");
-	err = ALT_SEM_CREATE(&button, 1);
+	err = ALT_SEM_CREATE(&timer, 1);
 	if(err!= 0)
 		printf("Semaphore not created\n");
 	err = ALT_SEM_CREATE(&level_sem, 1);
