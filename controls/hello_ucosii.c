@@ -394,15 +394,18 @@ void loadScores(short int file)
 		switch(c)
 		{
 		case ' ':
-		case '\r':
+		case '\n':
 			sprintf(highScores[pos][j], "%s", str);
 			j ^= 1;
 			i = 0;
-			memset(str, 0, sizeof(str));
-			break;
-		case '\n':
 			pos++;
 			memset(str, 0, sizeof(str));
+			break;
+//		case '\n':
+//			pos++;
+//			memset(str, 0, sizeof(str));
+//			break;
+		case '\r':
 			break;
 		default:
 			str[i] = c;
