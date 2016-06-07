@@ -32,6 +32,7 @@ Crate crates[MAX_CRATES];
 Player players[MAX_PLAYERS];
 
 char highScores[3][2][6] = { { { 0 } } };
+short int* scoresFile_ptr;
 
 /* Definition of Task Stacks */
 #define   TASK_STACKSIZE       2048
@@ -66,6 +67,14 @@ ALT_FLAG_GRP(finish_flag)
 #define PLAYER_PRIORITY			7
 #define DRAWTIMER_PRIORITY		10
 #define FINISH_PRIORITY			11
+
+void DrawTimerTask(void* pdata);
+void TimerTask(void* pdata);
+void PlayerTask(void* pdata);
+void ControlsTask(void* pdata);
+void InitLevelTask(void* pdata);
+void MainMenuTask(void* pdata);
+void FinishTask(void* pdata);
 
 void playTone(int height, int time)
 {
@@ -313,9 +322,9 @@ short int openSDFile(alt_up_sd_card_dev* sd_card, char name[])
 	}
 	return alt_up_sd_card_fopen(name,0);
 }
-void setScore(alt_8 pos)
+void setScore(alt_8 pos, alt_u8 name[], short int* f)
 {
-	alt_u8 teamName[4] = { 0 };
+	char highScoreStr[12] = { 0 };
 
 	switch(pos)
 	{
@@ -325,29 +334,42 @@ void setScore(alt_8 pos)
 		sprintf(highScores[pos+1][0], "%s", highScores[pos][0]);
 		sprintf(highScores[pos+1][1], "%s", highScores[pos][1]);
 		sprintf(highScores[pos][0], "%.2d:%.2d", min, sec);
-		sprintf(highScores[pos][1], "TST");
-//		sprintf(highScores[pos][0], "%.2d:%.2d", min, sec);
-//		sprintf(highScores[pos][0], "%s", teamName);
+		sprintf(highScores[pos][1], "%s", name);
 		break;
 	case 1:
-		sprintf(highScores[pos+2][0], "%s", highScores[pos+1][0]);
-		sprintf(highScores[pos+2][1], "%s", highScores[pos+1][1]);
 		sprintf(highScores[pos+1][0], "%s", highScores[pos][0]);
 		sprintf(highScores[pos+1][1], "%s", highScores[pos][1]);
 		sprintf(highScores[pos][0], "%.2d:%.2d", min, sec);
-		sprintf(highScores[pos][0], "%s", teamName);
+		sprintf(highScores[pos][1], "%s", name);
 		break;
 	case 2:
-		sprintf(highScores[pos+2][0], "%s", highScores[pos+1][0]);
-		sprintf(highScores[pos+2][1], "%s", highScores[pos+1][1]);
-		sprintf(highScores[pos+1][0], "%s", highScores[pos][0]);
-		sprintf(highScores[pos+1][1], "%s", highScores[pos][1]);
 		sprintf(highScores[pos][0], "%.2d:%.2d", min, sec);
-		sprintf(highScores[pos][0], "%s", teamName);
+		sprintf(highScores[pos][1], "%s", name);
 		break;
 	default:
 		break;
 	}
+
+	alt_up_sd_card_fclose(*f);
+	OSTimeDly(100);
+	short int file = alt_up_sd_card_fopen("scores.txt", 0);
+
+	alt_u8 i = 0;
+	alt_u8 j;
+	alt_u8 c = 0;
+	for (i = 0; i < 3; i++)
+	{
+		sprintf(highScoreStr, "%s %s\r\n", highScores[i][0], highScores[i][1]);
+		for (j = 0; j < 12; j++)
+		{
+			if (highScoreStr[j] != 0)
+			{
+				c = highScoreStr[j];
+				alt_up_sd_card_write(file, c);
+			}
+		}
+	}
+	alt_up_sd_card_fclose(file);
 }
 alt_8 checkScore()
 {
@@ -391,18 +413,15 @@ void loadScores(short int file)
 		switch(c)
 		{
 		case ' ':
-		case '\n':
+		case '\r':
 			sprintf(highScores[pos][j], "%s", str);
 			j ^= 1;
 			i = 0;
-			pos++;
 			memset(str, 0, sizeof(str));
 			break;
-//		case '\n':
-//			pos++;
-//			memset(str, 0, sizeof(str));
-//			break;
-		case '\r':
+		case '\n':
+			pos++;
+			memset(str, 0, sizeof(str));
 			break;
 		default:
 			str[i] = c;
@@ -413,27 +432,6 @@ void loadScores(short int file)
 	}
 }
 
-void FinishTask(void *pdata)
-{
-	while (1)
-	{
-		drawText(character_buffer, "                                    ", 2, 2);
-		drawText(character_buffer, "                                    ", 2, 3);
-		drawText(character_buffer, "                                    ", 2, 4);
-
-		drawText(character_buffer, highScores[0][0], 3, 2);
-		drawText(character_buffer, highScores[0][1], 10, 2);
-		drawText(character_buffer, highScores[1][0], 3, 3);
-		drawText(character_buffer, highScores[1][1], 10, 3);
-		drawText(character_buffer, highScores[2][0], 3, 4);
-		drawText(character_buffer, highScores[2][1], 10, 4);
-
-		ALT_FLAG_PEND(finish_flag, FINISH_1 + FINISH_2, OS_FLAG_WAIT_SET_ALL , 0);
-		ALT_SEM_PEND(timer, 0);
-		setScore(checkScore());
-		OSTimeDly(50);
-	}
-}
 void DrawTimerTask(void *pdata)
 {
 	char timerStr[6];
@@ -510,18 +508,6 @@ void PlayerTask(void* pdata)
 			movePlayer(pNum, LEFT);
 //			OSTimeDly(1);
 		}
-
-		if (players[pNum].action == 2)
-		{
-//			OSTimeDly(1);
-			addPenalty(10);
-			players[pNum].action = -1;
-		}
-//		if (players[pNum].action == 3)
-//		{
-//			setScore(checkScore());
-//			players[pNum].action = -1;
-//		}
 
 		// Draw player
 		ALT_SEM_PEND(display, 0);
@@ -670,6 +656,7 @@ void InitLevelTask(void* pdata)
 	sd_card = alt_up_sd_card_open_dev("/dev/SD_Card");
 	short int file = openSDFile(sd_card, "level.txt");
 	short int scoresFile = openSDFile(sd_card, "scores.txt");
+	scoresFile_ptr = &scoresFile;
 
 	if(file == -1)
 	{
@@ -781,28 +768,44 @@ void InitLevelTask(void* pdata)
 }
 void MainMenuTask(void* pdata)
 {
+	OSTimeDly(100);
 	alt_u8 i;
 	fillScreen(pixel_buffer, 0x00F0);
+
+	// Init players
+	Player p1 = { SCREEN_WIDTH/4, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2-2, NONE, NONE, NONE };
+	Player p2 = { SCREEN_WIDTH/4*3, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2-2, NONE, NONE, NONE };
+	players[0] = p1;
+	players[1] = p2;
+
 	for(i=2;i<5;i++)
 	{
 		drawText(character_buffer,"                ",0,i);
 	}
 	drawText(character_buffer,"      ",37,2);
+	drawText(character_buffer, "                     ", 29, 22);
+	drawText(character_buffer, "                          ", 27, 24);
+	drawText(character_buffer, "                  ", 31, 36);
+	drawText(character_buffer, "                  ", 31, 25);
+	drawText(character_buffer, " ", 31, 31);
+	drawText(character_buffer, " ", 39, 31);
+	drawText(character_buffer, " ", 47, 31);
+	drawText(character_buffer, "                       ", 29, 37);
 	drawRect(pixel_buffer,0xFFFF,SCREEN_WIDTH/2-50,SCREEN_HEIGHT/2-12,100,20);
 	drawText(character_buffer,"Press X to start playing",40-12,29);
 	drawBox(pixel_buffer,0xAAAA,SCREEN_WIDTH/2-50,SCREEN_HEIGHT/4-12,100,20);
 	drawText(character_buffer,"SPLITRUNNERS",40-6,14);
 	drawText(character_buffer,"(c) Jerko Lenstra & Rick de Bondt - 2016",40-20,44);
-		OSTaskCreateExt(ControlsTask,
-			0,
-			(void *)&ControlsTask_STK[TASK_STACKSIZE-1],
-			CONTROLS_PRIORITY,
-			CONTROLS_PRIORITY,
-			ControlsTask_STK,
-			TASK_STACKSIZE,
-			NULL,
-			0);
-		alt_u8 pNum;
+	OSTaskCreateExt(ControlsTask,
+		0,
+		(void *)&ControlsTask_STK[TASK_STACKSIZE-1],
+		CONTROLS_PRIORITY,
+		CONTROLS_PRIORITY,
+		ControlsTask_STK,
+		TASK_STACKSIZE,
+		NULL,
+		0);
+	alt_u8 pNum;
 	while(players[0].action != 2)
 	{
 		OSTimeDly(1);
@@ -867,6 +870,120 @@ void MainMenuTask(void* pdata)
 
 
 }
+void FinishTask(void *pdata)
+{
+	alt_u8 tempName[4] = { 0 };
+	sprintf(tempName, "AAA");
+	alt_u8 name[4] = { 0 };
+	alt_u8 scoreText[22] = { 0 };
+	alt_u8 cursorPos = 0;
+	alt_u8 cursorDrawn = 0;
+
+	drawText(character_buffer, highScores[0][0], 3, 2);
+	drawText(character_buffer, highScores[0][1], 10, 2);
+	drawText(character_buffer, highScores[1][0], 3, 3);
+	drawText(character_buffer, highScores[1][1], 10, 3);
+	drawText(character_buffer, highScores[2][0], 3, 4);
+	drawText(character_buffer, highScores[2][1], 10, 4);
+
+	while (1)
+	{
+		ALT_FLAG_PEND(finish_flag, FINISH_1 + FINISH_2, OS_FLAG_WAIT_SET_ALL, 0);
+		ALT_SEM_PEND(timer, 0);
+
+		OSTaskDel(PLAYER_PRIORITY);
+		OSTaskDel(PLAYER_PRIORITY+1);
+
+		drawBox(pixel_buffer, BG_COLOR + 1024, 100, 80, 120, 80);
+		drawRect(pixel_buffer, 0, 99, 79, 122, 82);
+		drawRect(pixel_buffer, 0xFFFF, 100, 80, 120, 80);
+
+		if (checkScore() >= 0)
+		{
+			sprintf(scoreText, "New highscore! %.2d:%.2d!", min, sec);
+			drawText(character_buffer, scoreText, 29, 22);
+			drawText(character_buffer, "Enter your teamname below", 27, 24);
+			drawText(character_buffer, "by using the DPAD.", 31, 25);
+			drawText(character_buffer, "Press X to submit.", 31, 36);
+			drawText(character_buffer, "(The game will restart)", 29, 37);
+
+			while (1)
+			{
+				OSTimeDly(1);
+				sprintf(name, "%c", tempName[0]);
+				drawText(character_buffer, name, 31, 31);
+				sprintf(name, "%c", tempName[1]);
+				drawText(character_buffer, name, 39, 31);
+				sprintf(name, "%c", tempName[2]);
+				drawText(character_buffer, name, 47, 31);
+
+				if (players[0].xDir == LEFT && cursorPos > 0)
+				{
+					cursorPos--;
+					players[0].xDir = NONE;
+					cursorDrawn = 0;
+				}
+				else if (players[0].xDir == RIGHT && cursorPos < 2)
+				{
+					cursorPos++;
+					players[0].xDir = NONE;
+					cursorDrawn = 0;
+				}
+				if (players[0].yDir == UP)
+				{
+					if (tempName[cursorPos] >= 'Z')
+						tempName[cursorPos] = 'A';
+					else
+						tempName[cursorPos]++;
+					players[0].yDir = NONE;
+				}
+				else if (players[0].yDir == DOWN)
+				{
+					if (tempName[cursorPos] <= 'A')
+						tempName[cursorPos] = 'Z';
+					else
+						tempName[cursorPos]--;
+					players[0].yDir = NONE;
+				}
+				if (players[0].action == 2)
+				{
+					sprintf(name, tempName);
+					setScore(checkScore(), name, scoresFile_ptr);
+
+					players[0].action = -1;
+					// Delete all tasks and restart
+
+					alt_u8 i;
+					for (i = INITLEVEL_PRIORITY; i < MAINMENU_PRIORITY; i++)
+						if (i != FINISH_PRIORITY)
+							OSTaskDel(i);
+					OSTaskCreateExt(MainMenuTask,
+							0,
+							(void *)&MainMenuTask_STK[TASK_STACKSIZE-1],
+							MAINMENU_PRIORITY,
+							MAINMENU_PRIORITY,
+							MainMenuTask_STK,
+							TASK_STACKSIZE,
+							NULL,
+							0);
+					OSTimeDlyHMSM(0, 0, 0, 500);
+					ALT_SEM_POST(timer);
+					ALT_FLAG_PEND(finish_flag, FINISH_1 + FINISH_2, OS_FLAG_WAIT_SET_ALL + OS_FLAG_CONSUME, 0);
+					OSTaskDel(OS_PRIO_SELF);
+				}
+				if (!cursorDrawn)
+				{
+					drawBox(pixel_buffer, 0, 120, 116, 16, 16);
+					drawBox(pixel_buffer, 0, 152, 116, 16, 16);
+					drawBox(pixel_buffer, 0, 184, 116, 16, 16);
+					drawRect(pixel_buffer, 0xFFFF, 120 + (32*cursorPos), 116, 16, 16);
+					cursorDrawn = 1;
+				}
+			}
+		}
+		OSTimeDly(50);
+	}
+}
 int main (void)
 {
 	OSInit();
@@ -891,13 +1008,6 @@ int main (void)
 		printf("Flag not created\n");
 
 	*(dma_control) &= (1<<2); //Enable DMA controller
-
-	// Init players
-	Player p1 = { SCREEN_WIDTH/4, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2-2, NONE, NONE, NONE };
-	Player p2 = { SCREEN_WIDTH/4*3, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2-2, NONE, NONE, NONE };
-	players[0] = p1;
-	players[1] = p2;
-
 
 	//Call find_files on the root directory
 	OSTaskCreateExt(MainMenuTask,
