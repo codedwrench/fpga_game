@@ -41,8 +41,7 @@ OS_STK    TimerTask_STK[TASK_STACKSIZE];
 OS_STK    DrawTimerTask_STK[TASK_STACKSIZE];
 OS_STK    InitLevelTask_STK[TASK_STACKSIZE];
 OS_STK    FinishTask_STK[TASK_STACKSIZE];
-
-// Semaphores and lags
+OS_STK    MainMenuTask_STK[TASK_STACKSIZE];
 ALT_SEM(display)
 ALT_SEM(audio)
 ALT_SEM(player)
@@ -61,9 +60,10 @@ ALT_FLAG_GRP(finish_flag)
 //#define CONTROLS_PRIORITY		8	6
 //#define PLAYER_PRIORITY			9	7
 #define INITLEVEL_PRIORITY		5
+#define TIMER_PRIORITY			9
+#define MAINMENU_PRIORITY			12
 #define CONTROLS_PRIORITY		6
 #define PLAYER_PRIORITY			7
-#define TIMER_PRIORITY			9
 #define DRAWTIMER_PRIORITY		10
 #define FINISH_PRIORITY			11
 
@@ -781,7 +781,94 @@ void InitLevelTask(void* pdata)
 	ALT_SEM_POST(level_sem);
 	OSTaskDel(OS_PRIO_SELF);
 }
+void MainMenuTask(void* pdata)
+{
+	alt_u8 i;
+	fillScreen(pixel_buffer, 0x00F0);
+	for(i=2;i<5;i++)
+	{
+		drawText(character_buffer,"                ",0,i);
+	}
+	drawText(character_buffer,"      ",37,2);
+	drawRect(pixel_buffer,0xFFFF,SCREEN_WIDTH/2-50,SCREEN_HEIGHT/2-12,100,20);
+	drawText(character_buffer,"Press X to start playing",40-12,29);
+	drawBox(pixel_buffer,0xAAAA,SCREEN_WIDTH/2-50,SCREEN_HEIGHT/4-12,100,20);
+	drawText(character_buffer,"SPLITRUNNERS",40-6,14);
+	drawText(character_buffer,"(c) Jerko Lenstra & Rick de Bondt - 2016",40-20,44);
+		OSTaskCreateExt(ControlsTask,
+			0,
+			(void *)&ControlsTask_STK[TASK_STACKSIZE-1],
+			CONTROLS_PRIORITY,
+			CONTROLS_PRIORITY,
+			ControlsTask_STK,
+			TASK_STACKSIZE,
+			NULL,
+			0);
+		alt_u8 pNum;
+	while(players[0].action != 2)
+	{
+		OSTimeDly(1);
 
+	}
+	drawText(character_buffer,"                        ",40-12,29);
+	drawText(character_buffer,"            ",40-6,14);
+	drawText(character_buffer,"                                        ",40-20,44);
+	OSTaskCreateExt(TimerTask,
+			0,
+			(void *)&TimerTask_STK[TASK_STACKSIZE-1],
+			TIMER_PRIORITY,
+			TIMER_PRIORITY,
+			TimerTask_STK,
+			TASK_STACKSIZE,
+			NULL,
+			0);
+	for (pNum = 0; pNum < MAX_PLAYERS; pNum++)
+	{
+		OSTaskCreateExt(PlayerTask,
+				pNum,
+				(void *)&PlayerTask_STK[pNum][TASK_STACKSIZE-1],
+				PLAYER_PRIORITY + pNum,
+				PLAYER_PRIORITY + pNum,
+				PlayerTask_STK[pNum],
+				TASK_STACKSIZE,
+				NULL,
+				0);
+	}
+	OSTaskCreateExt(InitLevelTask,
+			0,
+			(void *)&InitLevelTask_STK[TASK_STACKSIZE-1],
+			INITLEVEL_PRIORITY,
+			INITLEVEL_PRIORITY,
+			InitLevelTask_STK,
+			TASK_STACKSIZE,
+			NULL,
+			0);
+	OSTaskCreateExt(DrawTimerTask,
+			0,
+			(void *)&DrawTimerTask_STK[TASK_STACKSIZE-1],
+			DRAWTIMER_PRIORITY,
+			DRAWTIMER_PRIORITY,
+			DrawTimerTask_STK,
+			TASK_STACKSIZE,
+			NULL,
+			0);
+	OSTaskCreateExt(FinishTask,
+			0,
+			(void *)&FinishTask_STK[TASK_STACKSIZE-1],
+			FINISH_PRIORITY,
+			FINISH_PRIORITY,
+			FinishTask_STK,
+			TASK_STACKSIZE,
+			NULL,
+			0);
+	ALT_SEM_PEND(timer,0);
+	min = 0;
+	sec = 0;
+	ALT_SEM_POST(timer);
+	OSTaskDel(OS_PRIO_SELF);
+
+
+}
 int main (void)
 {
 	OSInit();
@@ -815,66 +902,15 @@ int main (void)
 
 
 	//Call find_files on the root directory
-	alt_u8 pNum;
-	OSTaskCreateExt(InitLevelTask,
+	OSTaskCreateExt(MainMenuTask,
 			0,
-			(void *)&InitLevelTask_STK[TASK_STACKSIZE-1],
-			INITLEVEL_PRIORITY,
-			INITLEVEL_PRIORITY,
-			InitLevelTask_STK,
+			(void *)&MainMenuTask_STK[TASK_STACKSIZE-1],
+			MAINMENU_PRIORITY,
+			MAINMENU_PRIORITY,
+			MainMenuTask_STK,
 			TASK_STACKSIZE,
 			NULL,
 			0);
-	OSTaskCreateExt(ControlsTask,
-			0,
-			(void *)&ControlsTask_STK[TASK_STACKSIZE-1],
-			CONTROLS_PRIORITY,
-			CONTROLS_PRIORITY,
-			ControlsTask_STK,
-			TASK_STACKSIZE,
-			NULL,
-			0);
-	OSTaskCreateExt(DrawTimerTask,
-			0,
-			(void *)&DrawTimerTask_STK[TASK_STACKSIZE-1],
-			DRAWTIMER_PRIORITY,
-			DRAWTIMER_PRIORITY,
-			DrawTimerTask_STK,
-			TASK_STACKSIZE,
-			NULL,
-			0);
-	OSTaskCreateExt(TimerTask,
-			0,
-			(void *)&TimerTask_STK[TASK_STACKSIZE-1],
-			TIMER_PRIORITY,
-			TIMER_PRIORITY,
-			TimerTask_STK,
-			TASK_STACKSIZE,
-			NULL,
-			0);
-	OSTaskCreateExt(FinishTask,
-			0,
-			(void *)&FinishTask_STK[TASK_STACKSIZE-1],
-			FINISH_PRIORITY,
-			FINISH_PRIORITY,
-			FinishTask_STK,
-			TASK_STACKSIZE,
-			NULL,
-			0);
-	for (pNum = 0; pNum < MAX_PLAYERS; pNum++)
-	{
-		OSTaskCreateExt(PlayerTask,
-				pNum,
-				(void *)&PlayerTask_STK[pNum][TASK_STACKSIZE-1],
-				PLAYER_PRIORITY + pNum,
-				PLAYER_PRIORITY + pNum,
-				PlayerTask_STK[pNum],
-				TASK_STACKSIZE,
-				NULL,
-				0);
-	}
-
-
 
 	OSStart();
 
