@@ -97,14 +97,22 @@ void playTone(int height, int time)
 
 	}
 }
+void addPenalty(alt_u8 n)
+{
+	ALT_SEM_PEND(timer, 0);
+	sec += n;
+	if (sec > 59)
+	{
+		sec %= 60;
+		min = (min + 1) % 60;
+	}
+	ALT_SEM_POST(timer);
+}
 void movePlayer(alt_u8 pNum, alt_u8 dir)
 {
-	alt_u8 err;
 	alt_u8 willCollide = 0;
 	alt_8 btnPressed = -1;
 	alt_u16 x, y, p, p0, p1;
-	alt_u16 color;
-	alt_u16 pX, pY;
 	alt_u8 i =0;
 
 	switch(dir)
@@ -305,17 +313,6 @@ short int openSDFile(alt_up_sd_card_dev* sd_card, char name[])
 	}
 	return alt_up_sd_card_fopen(name,0);
 }
-void addPenalty(alt_u8 n)
-{
-	ALT_SEM_PEND(timer, 0);
-	sec += n;
-	if (sec > 59)
-	{
-		sec %= 60;
-		min = (min + 1) % 60;
-	}
-	ALT_SEM_POST(timer);
-}
 void setScore(alt_8 pos)
 {
 	alt_u8 teamName[4] = { 0 };
@@ -447,7 +444,6 @@ void DrawTimerTask(void *pdata)
 	// Draw timer background
 	ALT_SEM_PEND(display, 0);
 	drawBox(pixel_buffer, 0, 145, 5, 30, 8);
-	drawBox(pixel_buffer, 0, 145, 230, 30, 8);
 	ALT_SEM_POST(display);
 
 	while (1)
@@ -669,7 +665,6 @@ void ControlsTask(void* pdata)
 }
 void InitLevelTask(void* pdata)
 {
-	alt_u8 err;
 	alt_sem_pend(level_sem,0);
 	alt_up_sd_card_dev * sd_card;
 	sd_card = alt_up_sd_card_open_dev("/dev/SD_Card");
@@ -898,8 +893,8 @@ int main (void)
 	*(dma_control) &= (1<<2); //Enable DMA controller
 
 	// Init players
-	Player p1 = { SCREEN_WIDTH/4, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2-2, "TestGuy1\0", NONE };
-	Player p2 = { SCREEN_WIDTH/4*3, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2-2, NONE, "TestGuy2\0", NONE };
+	Player p1 = { SCREEN_WIDTH/4, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2-2, NONE, NONE, NONE };
+	Player p2 = { SCREEN_WIDTH/4*3, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2-2, NONE, NONE, NONE };
 	players[0] = p1;
 	players[1] = p2;
 

@@ -28,7 +28,6 @@ typedef struct Player {
 	alt_u16 x, y;
 	alt_u8 yDir, xDir;
 	alt_8 action;
-	alt_u8* name;
 } Player;
 
 typedef struct Button {
