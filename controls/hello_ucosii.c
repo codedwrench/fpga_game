@@ -388,6 +388,11 @@ alt_8 checkScore()
 					result = i;
 					break;
 				}
+				else if (score[j] > highScores[i][0][j])
+				{
+					result = -1;
+					break;
+				}
 			}
 			else if (score[j] == 0)
 			{
@@ -508,6 +513,7 @@ void PlayerTask(void* pdata)
 			movePlayer(pNum, LEFT);
 //			OSTimeDly(1);
 		}
+
 
 		// Draw player
 		ALT_SEM_PEND(display, 0);
@@ -783,14 +789,20 @@ void MainMenuTask(void* pdata)
 		drawText(character_buffer,"                ",0,i);
 	}
 	drawText(character_buffer,"      ",37,2);
-	drawText(character_buffer, "                     ", 29, 22);
+	drawText(character_buffer, "                        ", 28, 22);
 	drawText(character_buffer, "                          ", 27, 24);
-	drawText(character_buffer, "                  ", 31, 36);
+	drawText(character_buffer, "                   ", 31, 36);
 	drawText(character_buffer, "                  ", 31, 25);
 	drawText(character_buffer, " ", 31, 31);
 	drawText(character_buffer, " ", 39, 31);
 	drawText(character_buffer, " ", 47, 31);
 	drawText(character_buffer, "                       ", 29, 37);
+	drawText(character_buffer, "          ", 35, 27);
+	drawText(character_buffer, "          ", 42, 27);
+	drawText(character_buffer, "          ", 35, 29);
+	drawText(character_buffer, "          ", 42, 29);
+	drawText(character_buffer, "          ", 35, 31);
+	drawText(character_buffer, "          ", 42, 31);
 	drawRect(pixel_buffer,0xFFFF,SCREEN_WIDTH/2-50,SCREEN_HEIGHT/2-12,100,20);
 	drawText(character_buffer,"Press X to start playing",40-12,29);
 	drawBox(pixel_buffer,0xAAAA,SCREEN_WIDTH/2-50,SCREEN_HEIGHT/4-12,100,20);
@@ -878,6 +890,7 @@ void FinishTask(void *pdata)
 	alt_u8 scoreText[22] = { 0 };
 	alt_u8 cursorPos = 0;
 	alt_u8 cursorDrawn = 0;
+	alt_8 test = -1;
 
 	drawText(character_buffer, highScores[0][0], 3, 2);
 	drawText(character_buffer, highScores[0][1], 10, 2);
@@ -898,6 +911,7 @@ void FinishTask(void *pdata)
 		drawRect(pixel_buffer, 0, 99, 79, 122, 82);
 		drawRect(pixel_buffer, 0xFFFF, 100, 80, 120, 80);
 
+		test = checkScore();
 		if (checkScore() >= 0)
 		{
 			sprintf(scoreText, "New highscore! %.2d:%.2d!", min, sec);
@@ -978,6 +992,46 @@ void FinishTask(void *pdata)
 					drawBox(pixel_buffer, 0, 184, 116, 16, 16);
 					drawRect(pixel_buffer, 0xFFFF, 120 + (32*cursorPos), 116, 16, 16);
 					cursorDrawn = 1;
+				}
+			}
+		}
+		else
+		{
+			sprintf(scoreText, "No highscore, try again!", min, sec);
+			drawText(character_buffer, scoreText, 28, 22);
+			drawText(character_buffer, "These are the highscores:", 28, 24);
+			drawText(character_buffer, highScores[0][0], 35, 27);
+			drawText(character_buffer, highScores[0][1], 42, 27);
+			drawText(character_buffer, highScores[1][0], 35, 29);
+			drawText(character_buffer, highScores[1][1], 42, 29);
+			drawText(character_buffer, highScores[2][0], 35, 31);
+			drawText(character_buffer, highScores[2][1], 42, 31);
+			drawText(character_buffer, "Press X to restart.", 31, 36);
+
+			while (1)
+			{
+				if (players[0].action == 2)
+				{
+					players[0].action = -1;
+					// Delete all tasks and restart
+
+					alt_u8 i;
+					for (i = INITLEVEL_PRIORITY; i < MAINMENU_PRIORITY; i++)
+						if (i != FINISH_PRIORITY)
+							OSTaskDel(i);
+					OSTaskCreateExt(MainMenuTask,
+							0,
+							(void *)&MainMenuTask_STK[TASK_STACKSIZE-1],
+							MAINMENU_PRIORITY,
+							MAINMENU_PRIORITY,
+							MainMenuTask_STK,
+							TASK_STACKSIZE,
+							NULL,
+							0);
+					OSTimeDlyHMSM(0, 0, 0, 500);
+					ALT_SEM_POST(timer);
+					ALT_FLAG_PEND(finish_flag, FINISH_1 + FINISH_2, OS_FLAG_WAIT_SET_ALL + OS_FLAG_CONSUME, 0);
+					OSTaskDel(OS_PRIO_SELF);
 				}
 			}
 		}
