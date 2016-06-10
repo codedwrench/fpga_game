@@ -34,6 +34,148 @@ Player players[MAX_PLAYERS];
 //Timer
 alt_u8 sec, min;
 
+alt_u8 getArea(alt_u16 x, alt_u8 y,alt_u8 w,alt_u8 h, alt_u16 collisionX,alt_u8 collisionY)
+{
+	if(collisionX <= x+1 && collisionX >= x-w && collisionY <= y && collisionY >= y-h)
+	{
+		return 1;
+	}
+	return 0;
+}
+alt_u8 checkWallAndDoor(alt_u16 x,alt_u8 y)
+{
+	if(getPixel(pixel_buffer,x,y) == WALL_COLOR ||getPixel(pixel_buffer,x,y) == DOOR_COLOR)
+		return 1;
+	return 0;
+}
+alt_u8 moveCrate(alt_u16 x,alt_u8 y,alt_u16 *crateX, alt_u16 *crateY,alt_u8 dir)
+{
+	if(*crateX == x && dir == RIGHT && !checkWallAndDoor(*crateX + PLAYER_SIZE+1,*crateY))//player is left of crate
+	{
+		if(getPixel(pixel_buffer,*crateX+PLAYER_SIZE+1,*crateY) == WALL_CRATE_COLOR) //teleport the box if it hits a grate
+		{
+			fillRect(pixel_buffer,BG_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE); //remove the crate from te old position
+			*crateX += 17;
+			fillRect(pixel_buffer,CRATE_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE); //redraw it at the new position
+		}
+		else //otherwise just draw it one pixel further
+		{
+			fillRect(pixel_buffer,BG_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE);
+			fillRect(pixel_buffer,CRATE_COLOR,*crateX+1,*crateY,PLAYER_SIZE,PLAYER_SIZE);
+			*crateX += 1;
+		}
+	}
+	else if(*crateX+PLAYER_SIZE==x && dir == LEFT && !checkWallAndDoor(*crateX-1,*crateY))//player is right of crate
+	{
+		if(getPixel(pixel_buffer,*crateX-1,*crateY) ==  WALL_CRATE_COLOR) //same as before but the other way around
+		{
+			fillRect(pixel_buffer,BG_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE);
+			*crateX -= 17;
+			fillRect(pixel_buffer,CRATE_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE);
+		}
+		else
+		{
+			fillRect(pixel_buffer,BG_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE);
+			fillRect(pixel_buffer,CRATE_COLOR,*crateX-1,*crateY,PLAYER_SIZE,PLAYER_SIZE);
+			*crateX -= 1;
+		}
+	}
+	else if(*crateY == y && dir == DOWN && !checkWallAndDoor(*crateX,*crateY + PLAYER_SIZE + 1))//player is above crate
+	{
+		fillRect(pixel_buffer,BG_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE); //remove the old crate
+		fillRect(pixel_buffer,CRATE_COLOR,*crateX,*crateY+1,PLAYER_SIZE,PLAYER_SIZE); //place new crate 1 lower
+		*crateY+= 1;
+	}
+	else if(*crateY + PLAYER_SIZE == y && dir == UP && !checkWallAndDoor(*crateX,*crateY-1))//player is below crate
+	{
+		fillRect(pixel_buffer,BG_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE); //remove the old crate
+		fillRect(pixel_buffer,CRATE_COLOR,*crateX,*crateY-1,PLAYER_SIZE,PLAYER_SIZE);
+		*crateY -= 1;
+	}
+	else
+	{
+		return 1;
+	}
+	return 0;
+
+}
+void handleCollisions(alt_u16 x, alt_u8 y,alt_u8 dir, alt_u8 pNum, alt_u8 *willCollide)
+{
+	alt_u8 i;
+	alt_u16 buttonX;
+	alt_u8 buttonY;
+	alt_u16 doorX;
+	alt_u8 doorY;
+	alt_u16 *crateX;
+	alt_u16 *crateY;
+	alt_u16 collisionColor= getPixel(pixel_buffer,x,y);
+	if (checkWallAndDoor(x,y)) //player bumped against a wall or door
+	{
+		*willCollide = 1;
+	}
+	else if (collisionColor == BUTTON_COLOR) //player has stepped on a button
+	{
+		*willCollide = 0; //player does not hit the button
+		for(i = 0;i<MAX_BUTTONS;i++)
+		{
+			buttonX = buttons[i].coords[0]*4;
+			buttonY = buttons[i].coords[1]*4;
+			doorX = doors[i].coords[0]*4;
+			doorY = doors[i].coords[1]*4;
+			if(getArea(x,y,BUTTON_SIZE,BUTTON_SIZE,buttonX,buttonY)) //if the player is on the button
+			{
+				drawRect(pixel_buffer,BG_COLOR,buttonX,buttonY,BUTTON_SIZE,BUTTON_SIZE); //Remove Button
+				if(doors[i].vert) //Draw door vertically
+					fillRect(pixel_buffer,BG_COLOR,doorX,doorY+1,WALL_SIZE,DOOR_SIZE-2);
+				else //Draw door horizontally
+					fillRect(pixel_buffer,BG_COLOR,doorX+1,doorY,DOOR_SIZE,WALL_SIZE);
+				break;
+			}
+		}
+	}
+	else if (getPixel(pixel_buffer,x,y) == CRATE_COLOR)
+	{
+		for(i =0;i<MAX_CRATES;i++)
+		{
+			crateX = &crates[i].coords[0];
+			crateY = &crates[i].coords[1];
+			*willCollide = moveCrate(x,y,crateX,crateY,dir);
+			alt_u8 cnt;
+			for(cnt = 0; cnt < MAX_BUTTONS;cnt++)
+			{
+				buttonX = buttons[cnt].coords[0]*4;
+				buttonY = buttons[cnt].coords[1]*4;
+				if(*crateX >= buttonX - BUTTON_SIZE && crates[i].coords[0] <= buttons[cnt].coords[0]*4 + 4 && crates[i].coords[1] >= buttons[cnt].coords[1]*4-4 && crates[i].coords[1] <= buttons[cnt].coords[1]*4+4)
+				{
+					buttons[cnt].coords[0]= 0;
+					fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					if(doors[cnt].vert)
+						fillRect(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4,(doors[cnt].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
+					else
+						fillRect(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4+1,doors[cnt].coords[1]*4,DOOR_SIZE,WALL_SIZE);
+				}
+			}
+		}
+	}
+	else if (*(pixel_buffer + (y << 9) + x) == -16)
+	{
+		*willCollide = 1;
+	}
+	else if(*(pixel_buffer + (y<<9)+x)== -21846)
+	{
+		addPenalty(2,timer);
+	}
+	else if (*(pixel_buffer + (y << 9) + x) == 0)
+	{
+		*willCollide = 1;
+		if (pNum == 0)
+			ALT_FLAG_POST(finish_flag, FINISH_1, OS_FLAG_SET);
+		else if (pNum == 1)
+			ALT_FLAG_POST(finish_flag, FINISH_2, OS_FLAG_SET);
+
+	}
+
+}
 
 void movePlayer(alt_u8 pNum, alt_u8 dir)
 {
@@ -71,118 +213,16 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 	default:
 		break;
 	}
-	for (p = p0; p < p1; p++)
+	for (p = p0; p < p1; p++) //Do this for every X or Y value , depending on the direction
 	{
-//		OSTimeDly(2);
-		if (dir == UP || dir == DOWN)
+		if (dir == UP || dir == DOWN) //Put p in X or Y depending on the direction
 			x = p;
 		else if (dir == LEFT || dir == RIGHT)
 			y = p;
-		if (*(pixel_buffer + (y << 9) + x) == -1 || *(pixel_buffer + (y << 9) + x) ==4095)
-		{
-			willCollide = 1;
-			break;
-		}
-		else if (*(pixel_buffer + (y << 9) + x) == 3840) //player has stepped on a button
-		{
-			willCollide = 0; //player does
-			for(i = 0;i<MAX_BUTTONS;i++)
-			{
-				if(((buttons[i].coords[0]*4)<=x+1 && (buttons[i].coords[0]*4)>= x-BUTTON_SIZE-1) && ((buttons[i].coords[1]*4)<=y) && ((buttons[i].coords[1]*4)>=y-BUTTON_SIZE)) //if the player is on the button
-				{
-					drawRect(pixel_buffer,BG_COLOR,buttons[i].coords[0]*4,buttons[i].coords[1]*4,BUTTON_SIZE,BUTTON_SIZE);
-					if(doors[i].vert)
-						fillRect(pixel_buffer,BG_COLOR,doors[i].coords[0]*4,(doors[i].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
-					else
-						fillRect(pixel_buffer,BG_COLOR,doors[i].coords[0]*4+1,doors[i].coords[1]*4,DOOR_SIZE,WALL_SIZE);
-					break;
-				}
-			}
-		}
-		else if (*(pixel_buffer + (y << 9) + x) == -3072)
-		{
-			for(i =0;i<MAX_CRATES;i++)
-			{
-				if(crates[i].coords[0]==x && dir == RIGHT && *(pixel_buffer + (y << 9) + crates[i].coords[0]+PLAYER_SIZE+1) != -1)//player is left of crate
-				{
-					if(*(pixel_buffer + (y << 9) + crates[i].coords[0]+9) ==  -16)
-					{
-						fillRect(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-						crates[i].coords[0] += 17;
-						fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					}
-					else
-					{
-						fillRect(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-						fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0]+1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-						crates[i].coords[0]++;
-					}
-				}
-				else if(crates[i].coords[0]+PLAYER_SIZE==x && dir == LEFT &&( *(pixel_buffer + (y << 9) + crates[i].coords[0]-1) != -1&&*(pixel_buffer + (y << 9) + crates[i].coords[0]-1) != 4095))//player is right of crate
-				{
-					if(*(pixel_buffer + (y << 9) + crates[i].coords[0]-1) ==  -16)
-					{
-						fillRect(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-						crates[i].coords[0] -= 17;
-						fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					}
-					else
-					{
-						fillRect(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-						fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0]-1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-						crates[i].coords[0]--;
-					}
-				}
-				else if(crates[i].coords[1] == y && dir == DOWN && (*(pixel_buffer + ((crates[i].coords[1]+PLAYER_SIZE+1) << 9) + x) != -1 && *(pixel_buffer + ((crates[i].coords[1]+PLAYER_SIZE+1) << 9) + x) != 4095))//player is above crate
-				{
-					fillRect(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1]+1,PLAYER_SIZE,PLAYER_SIZE);
-					crates[i].coords[1]++;
-				}
-				else if(crates[i].coords[1]+8==y&& dir == UP && (*(pixel_buffer + ((crates[i].coords[1]-1) << 9) + x) != -1 &&*(pixel_buffer + ((crates[i].coords[1]-1) << 9) + x) != 4095))//player is below crate
-				{
-					fillRect(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1]-1,PLAYER_SIZE,PLAYER_SIZE);
-					crates[i].coords[1]--;
-				}
-				else
-				{
-					willCollide = 1;
-				}
-				alt_u8 cnt;
-				for(cnt = 0; cnt < MAX_BUTTONS;cnt++)
-				{
-					if(crates[i].coords[0] >= buttons[cnt].coords[0]*4 - 4 && crates[i].coords[0] <= buttons[cnt].coords[0]*4 + 4 && crates[i].coords[1] >= buttons[cnt].coords[1]*4-4 && crates[i].coords[1] <= buttons[cnt].coords[1]*4+4)
-					{
-						buttons[cnt].coords[0]= 0;
-						fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-						if(doors[cnt].vert)
-							fillRect(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4,(doors[cnt].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
-						else
-							fillRect(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4+1,doors[cnt].coords[1]*4,DOOR_SIZE,WALL_SIZE);
-					}
-				}
-			}
-		}
-		else if (*(pixel_buffer + (y << 9) + x) == -16)
-		{
-			willCollide = 1;
-		}
-		else if(*(pixel_buffer + (y<<9)+x)== -21846)
-		{
-			addPenalty(2,timer);
-		}
-		else if (*(pixel_buffer + (y << 9) + x) == 0)
-		{
-			willCollide = 1;
-			if (pNum == 0)
-				ALT_FLAG_POST(finish_flag, FINISH_1, OS_FLAG_SET);
-			else if (pNum == 1)
-				ALT_FLAG_POST(finish_flag, FINISH_2, OS_FLAG_SET);
 
-		}
+		handleCollisions(x,y,dir,pNum,&willCollide);
 
-		for(i = 0;i<MAX_CRATES;i++)
+		for(i = 0;i<MAX_CRATES;i++) //redraw crates and button if player moves
 		{
 			fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
 		}
@@ -192,13 +232,11 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 			{
 				drawRect(pixel_buffer,BUTTON_CRATE_COLOR,buttons[i].coords[0]*4,buttons[i].coords[1]*4,BUTTON_SIZE,BUTTON_SIZE);
 			}
-
 		}
-		//		*(pixel_buffer + (y << 9) + x) = 0xF000;
 		if (willCollide || btnPressed >= 0)
 			break;
 	}
-	if (!willCollide)
+	if (!willCollide) //actually move the player
 	{
 		switch(dir)
 		{
@@ -279,7 +317,7 @@ void TimerTask(void *pdata)
 }
 void PlayerTask(void* pdata)
 {
-//	ALT_SEM_PEND(player, 0);
+	//	ALT_SEM_PEND(player, 0);
 
 	alt_u8 pNum = (alt_u8*) pdata;
 
@@ -288,12 +326,12 @@ void PlayerTask(void* pdata)
 	fillRect(pixel_buffer, PLAYER_COLOR/(pNum+1), players[pNum].x, players[pNum].y, PLAYER_SIZE, PLAYER_SIZE);
 	ALT_SEM_POST(display);
 
-//	ALT_SEM_POST(player);
+	//	ALT_SEM_POST(player);
 	while(1)
 	{
 		waitForVSync(buffer_register, dma_control);
-//		OSTimeDly(PLAYER_SPEED);
-//		OSTimeDly(100);
+		//		OSTimeDly(PLAYER_SPEED);
+		//		OSTimeDly(100);
 		OSTimeDly(20);
 
 		//		ALT_SEM_PEND(player, 0);
@@ -304,17 +342,17 @@ void PlayerTask(void* pdata)
 		else if(players[pNum].yDir == UP)
 		{
 			movePlayer(pNum, UP);
-//			OSTimeDly(1);
+			//			OSTimeDly(1);
 		}
 		if(players[pNum].xDir == RIGHT)
 		{
 			movePlayer(pNum, RIGHT);
-//			OSTimeDly(1);
+			//			OSTimeDly(1);
 		}
 		else if(players[pNum].xDir == LEFT)
 		{
 			movePlayer(pNum, LEFT);
-//			OSTimeDly(1);
+			//			OSTimeDly(1);
 		}
 
 
@@ -380,7 +418,7 @@ void ControlsTask(void* pdata)
 			}
 			if (cmd[0] != 0 && cmd[1] != 0 && cmd[2] != 0)
 			{
-//				ALT_SEM_PEND(player, 0);
+				//				ALT_SEM_PEND(player, 0);
 				pNum = cmd[0] - '0' - 1;
 
 				switch(cmd[1])
@@ -452,7 +490,7 @@ void ControlsTask(void* pdata)
 				i = 0;
 
 			}
-//			ALT_SEM_POST(player);
+			//			ALT_SEM_POST(player);
 
 		}
 		OSTimeDly(1);
@@ -469,7 +507,7 @@ void InitLevelTask(void* pdata)
 
 	if(file == -1)
 	{
-		printf("fucking kill me now\n");
+		printf("Something unexpected happened\n");
 	}
 	if (scoresFile == -1)
 	{
@@ -537,7 +575,7 @@ void InitLevelTask(void* pdata)
 			{
 				for(i=0;i<8;i++)
 				{
-				drawLine(pixel_buffer,SPIKE_COLOR,(count)*4+i*2-1,(county*4),(count)*4+i*2-1,(county*4)+4);
+					drawLine(pixel_buffer,SPIKE_COLOR,(count)*4+i*2-1,(county*4),(count)*4+i*2-1,(county*4)+4);
 				}
 			}
 			else
@@ -615,14 +653,14 @@ void MainMenuTask(void* pdata)
 	drawText(character_buffer,"SPLITRUNNERS",40-6,14);
 	drawText(character_buffer,"(c) Jerko Lenstra & Rick de Bondt - 2016",40-20,44);
 	OSTaskCreateExt(ControlsTask,
-		0,
-		(void *)&ControlsTask_STK[TASK_STACKSIZE-1],
-		CONTROLS_PRIORITY,
-		CONTROLS_PRIORITY,
-		ControlsTask_STK,
-		TASK_STACKSIZE,
-		NULL,
-		0);
+			0,
+			(void *)&ControlsTask_STK[TASK_STACKSIZE-1],
+			CONTROLS_PRIORITY,
+			CONTROLS_PRIORITY,
+			ControlsTask_STK,
+			TASK_STACKSIZE,
+			NULL,
+			0);
 	alt_u8 pNum;
 	while(players[0].action != 2)
 	{

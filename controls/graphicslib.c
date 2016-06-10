@@ -15,10 +15,19 @@ void fillScreen(volatile short * pixel_ctrl_ptr, alt_u16 color)
 	for(row = 0; row <= 240; row++){
 		for(col = 0; col <= 160; col++)
 		{
-			*(pixel_ctrl_ptr + (row << 9) + col) = color;
-			*(pixel_ctrl_ptr + (row << 9) + col+160) = color;
+			drawPixel(pixel_ctrl_ptr,col,row,color);
+			drawPixel(pixel_ctrl_ptr,col+160,row,color);
+			 //write a color to these spots of the pixel buffer, we use 2 functions to be able to use smaller variables
 		}
 	}
+}
+void drawPixel(volatile short * pixel_ctrl_ptr,alt_u16 x, alt_u8 y, alt_u16 color)
+{
+			*(pixel_ctrl_ptr + (y << 9) + x) = color;
+}
+alt_u16 getPixel(volatile short * pixel_ctrl_ptr, alt_u16 x, alt_u8 y)
+{
+			return (alt_u16)(*(pixel_ctrl_ptr + (y << 9) + x));
 }
 void drawLine(volatile short* pixel_ctrl_ptr, alt_u16 color, alt_u16 x0, alt_u16 y0, alt_u16 x1, alt_u16 y1)
 {
@@ -62,16 +71,16 @@ void drawLine(volatile short* pixel_ctrl_ptr, alt_u16 color, alt_u16 x0, alt_u16
 	{
 		if(is_steep)
 		{
-			if(*(pixel_ctrl_ptr + (x << 9) + y) != color )
+			if(getPixel(pixel_ctrl_ptr,y,x) != color )
 			{
-				*(pixel_ctrl_ptr + (x << 9) + y) = color;
+				drawPixel(pixel_ctrl_ptr,y,x,color);
 			}
 		}
 		else
 		{
-			if(*(pixel_ctrl_ptr + (y << 9) + x) != color)
+			if(getPixel(pixel_ctrl_ptr,x,y) != color)
 			{
-				*(pixel_ctrl_ptr + (y << 9) + x) = color;
+				drawPixel(pixel_ctrl_ptr,x,y,color);
 			}
 		}
 		error = error + deltay;
@@ -96,7 +105,7 @@ void fillRect(volatile short* pixel_ctrl_ptr, alt_u16 color, alt_u16 x0, alt_u16
 	for(row = y0; row <= y0+h; row++){
 		for(col=x0; col <= x0+w; col++)
 		{
-			*(pixel_ctrl_ptr + (row << 9) + col) = color;
+			drawPixel(pixel_ctrl_ptr,col,row,color);
 		}
 	}
 }
