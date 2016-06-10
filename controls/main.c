@@ -1,48 +1,22 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include "includes.h"
-#include <alt_types.h>
-#include <os/alt_sem.h>
-#include <os/alt_flag.h>
-#include "graphicslib.h"
-#include "gamelib.h"
-#include <Altera_UP_SD_Card_Avalon_Interface.h>
-#include "address_map_nios2.h"
-#define BUF_SIZE 5000000			// about 10 seconds of buffer (@ 48K samples/sec)
-#define BUF_THRESHOLD 96			// 75% of 128 word buffer
+#include "main.h"
 
-volatile short* pixel_buffer 	= (short*)	0x08000000;
-volatile char* character_buffer	= (char*)	0x09000000;
-volatile short* buffer_register	= (short*)	0x10003060;
-volatile short* dma_control		= (short*)	0x1000306C;
-volatile int* audio_ptr			= (int*)	0x10003040;			// audio port address
-volatile int* RED_LED_ptr		= (int*)	RED_LED_BASE;		// RED LED address
-volatile int* JTAG_UART_ptr 	= (int*)	JTAG_UART_BASE;		// JTAG UART address
-int left_buffer[BUF_SIZE];										// left speaker
-int right_buffer[BUF_SIZE];										// right speaker
-int fifospace, leftdata, rightdata;
+//Pointers to hardware
+volatile short * pixel_buffer 	    = (short*)PIXEL_BUFFER
+volatile char * character_buffer	= (char*)CHARACTER_BUFFER;
+volatile short * buffer_register	= (short*)BUFFER_REGISTER;
+volatile short * dma_control		= (short*)DMA_CONTROL;
+volatile int * JTAG_UART_ptr 	= (int*)	JTAG_UART;		// JTAG UART address
 
-alt_u8 sec, min;
+//Stack Definitions
+OS_STK PlayerTask_STK[MAX_PLAYERS][TASK_STACKSIZE];
+OS_STK ControlsTask_STK[TASK_STACKSIZE];
+OS_STK TimerTask_STK[TASK_STACKSIZE];
+OS_STK DrawTimerTask_STK[TASK_STACKSIZE];
+OS_STK InitLevelTask_STK[TASK_STACKSIZE];
+OS_STK FinishTask_STK[TASK_STACKSIZE];
+OS_STK MainMenuTask_STK[TASK_STACKSIZE];
 
-Door doors[MAX_DOORS];
-Button buttons[MAX_DOORS];
-Crate crates[MAX_CRATES];
-Player players[MAX_PLAYERS];
-
-char highScores[3][2][6] = { { { 0 } } };
-short int* scoresFile_ptr;
-
-/* Definition of Task Stacks */
-#define   TASK_STACKSIZE       2048
-OS_STK    PlayerTask_STK[MAX_PLAYERS][TASK_STACKSIZE];
-OS_STK    ControlsTask_STK[TASK_STACKSIZE];
-OS_STK    TimerTask_STK[TASK_STACKSIZE];
-OS_STK    DrawTimerTask_STK[TASK_STACKSIZE];
-OS_STK    InitLevelTask_STK[TASK_STACKSIZE];
-OS_STK    FinishTask_STK[TASK_STACKSIZE];
-OS_STK    MainMenuTask_STK[TASK_STACKSIZE];
+//Semaphores and Flags
 ALT_SEM(display)
 ALT_SEM(audio)
 ALT_SEM(player)
@@ -51,72 +25,16 @@ ALT_SEM(level_sem)
 ALT_SEM(timer)
 ALT_FLAG_GRP(finish_flag)
 
-#define FINISH_1 0x01
-#define FINISH_2 0x02
+//In-Game objects
+Door doors[MAX_DOORS];
+Button buttons[MAX_DOORS];
+Crate crates[MAX_CRATES];
+Player players[MAX_PLAYERS];
 
-/* Definition of Task Priorities */
-//#define INITLEVEL_PRIORITY		5	5
-//#define TIMER_PRIORITY			6	9
-//#define DRAWTIMER_PRIORITY		7	10
-//#define CONTROLS_PRIORITY		8	6
-//#define PLAYER_PRIORITY			9	7
-#define INITLEVEL_PRIORITY		5
-#define TIMER_PRIORITY			9
-#define MAINMENU_PRIORITY			12
-#define CONTROLS_PRIORITY		6
-#define PLAYER_PRIORITY			7
-#define DRAWTIMER_PRIORITY		10
-#define FINISH_PRIORITY			11
-
-void DrawTimerTask(void* pdata);
-void TimerTask(void* pdata);
-void PlayerTask(void* pdata);
-void ControlsTask(void* pdata);
-void InitLevelTask(void* pdata);
-void MainMenuTask(void* pdata);
-void FinishTask(void* pdata);
-
-void playTone(int height, int time)
-{
-	signed long high = 2147483392;
-	signed long low = -2147483648;
-	int  buffer_index = 0;
-	fifospace = 0;
-	int i = 0;
-	for( i = 0; i<time*10000;i++)
-	{
-
-		if(buffer_index < height)
-		{
-			*(audio_ptr + 2) = high;
-			*(audio_ptr + 3) = high;
-		}
-		else if (buffer_index > height)
-		{
-			*(audio_ptr + 2) = low;
-			*(audio_ptr + 3) = low;
-		}
-		if(buffer_index == 1+height*2)
-		{
-			buffer_index = 0;
-		}
+//Timer
+alt_u8 sec, min;
 
 
-		++buffer_index;
-
-	}
-}
-void addPenalty(alt_u8 n)
-{
-	ALT_SEM_PEND(timer, 0);
-	sec += n;
-	if (sec > 59)
-	{
-		sec %= 60;
-		min = (min + 1) % 60;
-	}
-	ALT_SEM_POST(timer);
-}
 void movePlayer(alt_u8 pNum, alt_u8 dir)
 {
 	alt_u8 willCollide = 0;
@@ -174,9 +92,9 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 				{
 					drawRect(pixel_buffer,BG_COLOR,buttons[i].coords[0]*4,buttons[i].coords[1]*4,BUTTON_SIZE,BUTTON_SIZE);
 					if(doors[i].vert)
-						drawBox(pixel_buffer,BG_COLOR,doors[i].coords[0]*4,(doors[i].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
+						fillRect(pixel_buffer,BG_COLOR,doors[i].coords[0]*4,(doors[i].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
 					else
-						drawBox(pixel_buffer,BG_COLOR,doors[i].coords[0]*4+1,doors[i].coords[1]*4,DOOR_SIZE,WALL_SIZE);
+						fillRect(pixel_buffer,BG_COLOR,doors[i].coords[0]*4+1,doors[i].coords[1]*4,DOOR_SIZE,WALL_SIZE);
 					break;
 				}
 			}
@@ -189,14 +107,14 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 				{
 					if(*(pixel_buffer + (y << 9) + crates[i].coords[0]+9) ==  -16)
 					{
-						drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						fillRect(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
 						crates[i].coords[0] += 17;
-						drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
 					}
 					else
 					{
-						drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-						drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0]+1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						fillRect(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0]+1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
 						crates[i].coords[0]++;
 					}
 				}
@@ -204,27 +122,27 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 				{
 					if(*(pixel_buffer + (y << 9) + crates[i].coords[0]-1) ==  -16)
 					{
-						drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						fillRect(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
 						crates[i].coords[0] -= 17;
-						drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
 					}
 					else
 					{
-						drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-						drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0]-1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						fillRect(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0]-1,crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
 						crates[i].coords[0]--;
 					}
 				}
 				else if(crates[i].coords[1] == y && dir == DOWN && (*(pixel_buffer + ((crates[i].coords[1]+PLAYER_SIZE+1) << 9) + x) != -1 && *(pixel_buffer + ((crates[i].coords[1]+PLAYER_SIZE+1) << 9) + x) != 4095))//player is above crate
 				{
-					drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1]+1,PLAYER_SIZE,PLAYER_SIZE);
+					fillRect(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1]+1,PLAYER_SIZE,PLAYER_SIZE);
 					crates[i].coords[1]++;
 				}
 				else if(crates[i].coords[1]+8==y&& dir == UP && (*(pixel_buffer + ((crates[i].coords[1]-1) << 9) + x) != -1 &&*(pixel_buffer + ((crates[i].coords[1]-1) << 9) + x) != 4095))//player is below crate
 				{
-					drawBox(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1]-1,PLAYER_SIZE,PLAYER_SIZE);
+					fillRect(pixel_buffer,BG_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+					fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1]-1,PLAYER_SIZE,PLAYER_SIZE);
 					crates[i].coords[1]--;
 				}
 				else
@@ -237,11 +155,11 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 					if(crates[i].coords[0] >= buttons[cnt].coords[0]*4 - 4 && crates[i].coords[0] <= buttons[cnt].coords[0]*4 + 4 && crates[i].coords[1] >= buttons[cnt].coords[1]*4-4 && crates[i].coords[1] <= buttons[cnt].coords[1]*4+4)
 					{
 						buttons[cnt].coords[0]= 0;
-						drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+						fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
 						if(doors[cnt].vert)
-							drawBox(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4,(doors[cnt].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
+							fillRect(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4,(doors[cnt].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
 						else
-							drawBox(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4+1,doors[cnt].coords[1]*4,DOOR_SIZE,WALL_SIZE);
+							fillRect(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4+1,doors[cnt].coords[1]*4,DOOR_SIZE,WALL_SIZE);
 					}
 				}
 			}
@@ -252,7 +170,7 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 		}
 		else if(*(pixel_buffer + (y<<9)+x)== -21846)
 		{
-			addPenalty(2);
+			addPenalty(2,timer);
 		}
 		else if (*(pixel_buffer + (y << 9) + x) == 0)
 		{
@@ -266,7 +184,7 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 
 		for(i = 0;i<MAX_CRATES;i++)
 		{
-			drawBox(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
+			fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
 		}
 		for(i = 20;i<MAX_BUTTONS;i++)
 		{
@@ -322,141 +240,6 @@ short int openSDFile(alt_up_sd_card_dev* sd_card, char name[])
 	}
 	return alt_up_sd_card_fopen(name,0);
 }
-short int saveScoresToSDFile(short int *f)
-{
-	char highScoreStr[12] = { 0 };
-	alt_up_sd_card_fclose(*f);
-	OSTimeDly(100);
-	short int file = alt_up_sd_card_fopen("scores.txt", 0);
-
-	alt_u8 i = 0;
-	alt_u8 j;
-	alt_u8 c = 0;
-	for (i = 0; i < 3; i++)
-	{
-		sprintf(highScoreStr, "%s %s\r\n", highScores[i][0], highScores[i][1]);
-		for (j = 0; j < 12; j++)
-		{
-			if (highScoreStr[j] != 0)
-			{
-				c = highScoreStr[j];
-				alt_up_sd_card_write(file, c);
-			}
-		}
-	}
-	return alt_up_sd_card_fclose(file);
-}
-void setInitScore(short int* file)
-{
-	alt_u8 err;
-
-	sprintf(highScores[2][0], "02:30");
-	sprintf(highScores[2][1], "CCC");
-	sprintf(highScores[1][0], "02:00");
-	sprintf(highScores[1][1], "BBB");
-	sprintf(highScores[0][0], "01:30");
-	sprintf(highScores[0][1], "AAA");
-
-	err = saveScoresToSDFile(file);
-	if(err)
-		printf("Couldn't save file to SD card");
-}
-void setScore(alt_8 pos, alt_u8 name[], short int* f)
-{
-	alt_u8 err = 0;
-	switch(pos)
-	{
-	case 0:
-		sprintf(highScores[pos+2][0], "%s", highScores[pos+1][0]);
-		sprintf(highScores[pos+2][1], "%s", highScores[pos+1][1]);
-		sprintf(highScores[pos+1][0], "%s", highScores[pos][0]);
-		sprintf(highScores[pos+1][1], "%s", highScores[pos][1]);
-		sprintf(highScores[pos][0], "%.2d:%.2d", min, sec);
-		sprintf(highScores[pos][1], "%s", name);
-		break;
-	case 1:
-		sprintf(highScores[pos+1][0], "%s", highScores[pos][0]);
-		sprintf(highScores[pos+1][1], "%s", highScores[pos][1]);
-		sprintf(highScores[pos][0], "%.2d:%.2d", min, sec);
-		sprintf(highScores[pos][1], "%s", name);
-		break;
-	case 2:
-		sprintf(highScores[pos][0], "%.2d:%.2d", min, sec);
-		sprintf(highScores[pos][1], "%s", name);
-		break;
-	default:
-		break;
-	}
-	err = saveScoresToSDFile(f);
-	if(err)
-		printf("Couldn't save file to SD card");
-}
-alt_8 checkScore()
-{
-	alt_u8 i, j;
-	alt_8 result = -1;
-	alt_u8 score[6] = { 0 };
-	sprintf(score, "%.2d:%.2d", min, sec);
-	for (i = 0; i < 3; i++)
-	{
-		for (j = 0; j < 6; j++)
-		{
-			if (score[j] >= '0' && score[j] <= '9')
-			{
-				if (score[j] < highScores[i][0][j])
-				{
-					result = i;
-					break;
-				}
-				else if (score[j] > highScores[i][0][j])
-				{
-					result = -1;
-					break;
-				}
-			}
-			else if (score[j] == 0)
-			{
-				break;
-			}
-			OSTimeDly(1);
-		}
-		if (result >= 0)
-			break;
-	}
-	return result;
-}
-void loadScores(short int file)
-{
-	char str[6] = { 0 };
-	char c =  alt_up_sd_card_read(file);
-	alt_u8 pos = 0;
-	alt_u8 i = 0;
-	alt_u8 j = 0;
-
-	while(c != EOF)
-	{
-		switch(c)
-		{
-		case ' ':
-		case '\r':
-			sprintf(highScores[pos][j], "%s", str);
-			j ^= 1;
-			i = 0;
-			memset(str, 0, sizeof(str));
-			break;
-		case '\n':
-			pos++;
-			memset(str, 0, sizeof(str));
-			break;
-		default:
-			str[i] = c;
-			i++;
-			break;
-		}
-		c =  alt_up_sd_card_read(file);
-	}
-}
-
 void DrawTimerTask(void *pdata)
 {
 	char timerStr[6];
@@ -466,7 +249,7 @@ void DrawTimerTask(void *pdata)
 
 	// Draw timer background
 	ALT_SEM_PEND(display, 0);
-	drawBox(pixel_buffer, 0, 145, 5, 30, 8);
+	fillRect(pixel_buffer, 0, 145, 5, 30, 8);
 	ALT_SEM_POST(display);
 
 	while (1)
@@ -502,7 +285,7 @@ void PlayerTask(void* pdata)
 
 	// Draw initial playerbox
 	ALT_SEM_PEND(display, 0);
-	drawBox(pixel_buffer, PLAYER_COLOR/(pNum+1), players[pNum].x, players[pNum].y, PLAYER_SIZE, PLAYER_SIZE);
+	fillRect(pixel_buffer, PLAYER_COLOR/(pNum+1), players[pNum].x, players[pNum].y, PLAYER_SIZE, PLAYER_SIZE);
 	ALT_SEM_POST(display);
 
 //	ALT_SEM_POST(player);
@@ -538,7 +321,7 @@ void PlayerTask(void* pdata)
 		// Draw player
 		ALT_SEM_PEND(display, 0);
 		drawRect(pixel_buffer, BG_COLOR, players[pNum].x-1, players[pNum].y-1, PLAYER_SIZE+2, PLAYER_SIZE+2);
-		drawBox(pixel_buffer, PLAYER_COLOR/(pNum+1), players[pNum].x, players[pNum].y, PLAYER_SIZE, PLAYER_SIZE);
+		fillRect(pixel_buffer, PLAYER_COLOR/(pNum+1), players[pNum].x, players[pNum].y, PLAYER_SIZE, PLAYER_SIZE);
 		ALT_SEM_POST(display);
 
 		//		ALT_SEM_POST(player);
@@ -711,7 +494,7 @@ void InitLevelTask(void* pdata)
 	{
 		if(pix == '1')
 		{
-			drawBox(pixel_buffer,WALL_COLOR,count*4,county*4,4,4);
+			fillRect(pixel_buffer,WALL_COLOR,count*4,county*4,4,4);
 		}
 		else if(pix == '\n')
 		{
@@ -737,7 +520,7 @@ void InitLevelTask(void* pdata)
 		}
 		else if(pix == '+')
 		{
-			drawBox(pixel_buffer,CRATE_COLOR,count*4,county*4,PLAYER_SIZE,PLAYER_SIZE);
+			fillRect(pixel_buffer,CRATE_COLOR,count*4,county*4,PLAYER_SIZE,PLAYER_SIZE);
 			crates[countcrate].coords[0] = count*4;
 			crates[countcrate].coords[1] = county*4;
 		}
@@ -759,7 +542,7 @@ void InitLevelTask(void* pdata)
 			}
 			else
 			{
-				drawBox(pixel_buffer,DOOR_COLOR,(count-1)*4+1,county*4,DOOR_SIZE,WALL_SIZE);
+				fillRect(pixel_buffer,DOOR_COLOR,(count-1)*4+1,county*4,DOOR_SIZE,WALL_SIZE);
 			}
 		}
 		else if(count-1 == doortrig[0] && county == doortrig[1] && pix == ' ' )
@@ -768,7 +551,7 @@ void InitLevelTask(void* pdata)
 		}
 		else if(vert == 1 && count == doortrig[0] && county-1 == doortrig[1] && pix != ' ')
 		{
-			drawBox(pixel_buffer,DOOR_COLOR,(count)*4,(county*4)-3,WALL_SIZE,DOOR_SIZE);
+			fillRect(pixel_buffer,DOOR_COLOR,(count)*4,(county*4)-3,WALL_SIZE,DOOR_SIZE);
 			doors[pix-50].coords[0] = count;
 			doors[pix-50].coords[1] = county -1;
 			doors[pix-50].vert = 1;
@@ -828,7 +611,7 @@ void MainMenuTask(void* pdata)
 	drawText(character_buffer, "          ", 42, 31);
 	drawRect(pixel_buffer,0xFFFF,SCREEN_WIDTH/2-50,SCREEN_HEIGHT/2-12,100,20);
 	drawText(character_buffer,"Press X to start playing",40-12,29);
-	drawBox(pixel_buffer,0xAAAA,SCREEN_WIDTH/2-50,SCREEN_HEIGHT/4-12,100,20);
+	fillRect(pixel_buffer,0xAAAA,SCREEN_WIDTH/2-50,SCREEN_HEIGHT/4-12,100,20);
 	drawText(character_buffer,"SPLITRUNNERS",40-6,14);
 	drawText(character_buffer,"(c) Jerko Lenstra & Rick de Bondt - 2016",40-20,44);
 	OSTaskCreateExt(ControlsTask,
@@ -930,7 +713,7 @@ void FinishTask(void *pdata)
 		OSTaskDel(PLAYER_PRIORITY);
 		OSTaskDel(PLAYER_PRIORITY+1);
 
-		drawBox(pixel_buffer, BG_COLOR + 1024, 100, 80, 120, 80);
+		fillRect(pixel_buffer, BG_COLOR + 1024, 100, 80, 120, 80);
 		drawRect(pixel_buffer, 0, 99, 79, 122, 82);
 		drawRect(pixel_buffer, 0xFFFF, 100, 80, 120, 80);
 
@@ -1010,9 +793,9 @@ void FinishTask(void *pdata)
 				}
 				if (!cursorDrawn)
 				{
-					drawBox(pixel_buffer, 0, 120, 116, 16, 16);
-					drawBox(pixel_buffer, 0, 152, 116, 16, 16);
-					drawBox(pixel_buffer, 0, 184, 116, 16, 16);
+					fillRect(pixel_buffer, 0, 120, 116, 16, 16);
+					fillRect(pixel_buffer, 0, 152, 116, 16, 16);
+					fillRect(pixel_buffer, 0, 184, 116, 16, 16);
 					drawRect(pixel_buffer, 0xFFFF, 120 + (32*cursorPos), 116, 16, 16);
 					cursorDrawn = 1;
 				}

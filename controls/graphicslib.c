@@ -9,17 +9,6 @@ void waitForVSync(volatile short* buffer_register, volatile short* dma_control)
 	{
 	}
 }
-void clearScreen(volatile short * pixel_ctrl_ptr)
-{
-	alt_u8 row, col;
-	for(row = 0; row <= 240; row++){
-		for(col = 0; col <= 160; col++)
-		{
-			*(pixel_ctrl_ptr + (row << 9) + col) = 0;
-			*(pixel_ctrl_ptr + (row << 9) + col+160) = 0;
-		}
-	}
-}
 void fillScreen(volatile short * pixel_ctrl_ptr, alt_u16 color)
 {
 	alt_u8 row, col;
@@ -100,7 +89,7 @@ void drawRect(volatile short* pixel_ctrl_ptr, alt_u16 color, alt_u16 x0, alt_u16
 	drawLine(pixel_ctrl_ptr, color, x0, y0+h, x0+w+1, y0+h);	// right line
 	drawLine(pixel_ctrl_ptr, color, x0+w, y0, x0+w, y0+h);		// bottom line
 }
-void drawBox(volatile short* pixel_ctrl_ptr, alt_u16 color, alt_u16 x0, alt_u16 y0, alt_u8 w, alt_u8 h)
+void fillRect(volatile short* pixel_ctrl_ptr, alt_u16 color, alt_u16 x0, alt_u16 y0, alt_u8 w, alt_u8 h)
 {
 	alt_u8 row;
 	alt_u16 col;
@@ -109,33 +98,6 @@ void drawBox(volatile short* pixel_ctrl_ptr, alt_u16 color, alt_u16 x0, alt_u16 
 		{
 			*(pixel_ctrl_ptr + (row << 9) + col) = color;
 		}
-	}
-}
-void drawCircle(volatile short* pixel_ctrl_ptr, alt_u16 color, alt_u16 xs, alt_u8 ys, alt_u8 r)
-{
-	int x = r;
-	int y = 0;
-	int err = -r;
-	while(x >= y)
-	{
-		*(pixel_ctrl_ptr + ((y+ys) << 9) + (xs+x)) = color;
-		*(pixel_ctrl_ptr + ((ys+y) << 9) + (xs-x)) = color;
-		*(pixel_ctrl_ptr + ((ys-y) << 9) + (xs+x)) = color;
-		*(pixel_ctrl_ptr + ((ys-y) << 9) + (xs-x)) = color;
-		*(pixel_ctrl_ptr + ((ys+x) << 9) + (xs+y)) = color;
-		*(pixel_ctrl_ptr + ((x+ys) << 9) + (xs-y)) = color;
-		*(pixel_ctrl_ptr + ((ys-x) << 9) + (xs+y)) = color;
-		*(pixel_ctrl_ptr + ((ys-x) << 9) + (xs-y)) = color;
-
-		err += y++;
-		err += y;
-		if(err >= 0)
-		{
-			x--;
-			err = err -x -x;
-		}
-
-
 	}
 }
 void drawText(volatile char* char_ctrl_ptr, char* text_ptr, alt_u16 x, alt_u8 y)
