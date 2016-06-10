@@ -322,10 +322,48 @@ short int openSDFile(alt_up_sd_card_dev* sd_card, char name[])
 	}
 	return alt_up_sd_card_fopen(name,0);
 }
-void setScore(alt_8 pos, alt_u8 name[], short int* f)
+short int saveScoresToSDFile(short int *f)
 {
 	char highScoreStr[12] = { 0 };
+	alt_up_sd_card_fclose(*f);
+	OSTimeDly(100);
+	short int file = alt_up_sd_card_fopen("scores.txt", 0);
 
+	alt_u8 i = 0;
+	alt_u8 j;
+	alt_u8 c = 0;
+	for (i = 0; i < 3; i++)
+	{
+		sprintf(highScoreStr, "%s %s\r\n", highScores[i][0], highScores[i][1]);
+		for (j = 0; j < 12; j++)
+		{
+			if (highScoreStr[j] != 0)
+			{
+				c = highScoreStr[j];
+				alt_up_sd_card_write(file, c);
+			}
+		}
+	}
+	return alt_up_sd_card_fclose(file);
+}
+void setInitScore(short int* file)
+{
+	alt_u8 err;
+
+	sprintf(highScores[2][0], "02:30");
+	sprintf(highScores[2][1], "CCC");
+	sprintf(highScores[1][0], "02:00");
+	sprintf(highScores[1][1], "BBB");
+	sprintf(highScores[0][0], "01:30");
+	sprintf(highScores[0][1], "AAA");
+
+	err = saveScoresToSDFile(file);
+	if(err)
+		printf("Couldn't save file to SD card");
+}
+void setScore(alt_8 pos, alt_u8 name[], short int* f)
+{
+	alt_u8 err = 0;
 	switch(pos)
 	{
 	case 0:
@@ -349,27 +387,9 @@ void setScore(alt_8 pos, alt_u8 name[], short int* f)
 	default:
 		break;
 	}
-
-	alt_up_sd_card_fclose(*f);
-	OSTimeDly(100);
-	short int file = alt_up_sd_card_fopen("scores.txt", 0);
-
-	alt_u8 i = 0;
-	alt_u8 j;
-	alt_u8 c = 0;
-	for (i = 0; i < 3; i++)
-	{
-		sprintf(highScoreStr, "%s %s\r\n", highScores[i][0], highScores[i][1]);
-		for (j = 0; j < 12; j++)
-		{
-			if (highScoreStr[j] != 0)
-			{
-				c = highScoreStr[j];
-				alt_up_sd_card_write(file, c);
-			}
-		}
-	}
-	alt_up_sd_card_fclose(file);
+	err = saveScoresToSDFile(f);
+	if(err)
+		printf("Couldn't save file to SD card");
 }
 alt_8 checkScore()
 {
@@ -671,6 +691,9 @@ void InitLevelTask(void* pdata)
 	if (scoresFile == -1)
 	{
 		printf("Can't open scores file\n");
+		scoresFile = alt_up_sd_card_fopen("scores.txt", 1);
+		scoresFile_ptr = &scoresFile;
+		setInitScore(scoresFile_ptr);
 	}
 
 	loadScores(scoresFile);
