@@ -109,7 +109,7 @@ void handleCollisions(alt_u16 x, alt_u8 y,alt_u8 dir, alt_u8 pNum, alt_u8 *willC
 	alt_u16 *crateX;
 	alt_u16 *crateY;
 	alt_u16 collisionColor= getPixel(pixel_buffer,x,y);
-	if (checkWallAndDoor(x,y)) //player bumped against a wall or door
+	if (checkWallAndDoor(x,y)||collisionColor == WALL_CRATE_COLOR) //player bumped against a wall or door
 	{
 		*willCollide = 1;
 	}
@@ -157,15 +157,11 @@ void handleCollisions(alt_u16 x, alt_u8 y,alt_u8 dir, alt_u8 pNum, alt_u8 *willC
 			}
 		}
 	}
-	else if (*(pixel_buffer + (y << 9) + x) == -16)
-	{
-		*willCollide = 1;
-	}
-	else if(*(pixel_buffer + (y<<9)+x)== -21846)
+	else if(collisionColor == SPIKE_COLOR)
 	{
 		addPenalty(2,timer);
 	}
-	else if (*(pixel_buffer + (y << 9) + x) == 0)
+	else if (collisionColor == 0)
 	{
 		*willCollide = 1;
 		if (pNum == 0)
