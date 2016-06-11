@@ -597,18 +597,10 @@ void InitLevelTask(void* pdata)
 	ALT_SEM_POST(level_sem);
 	OSTaskDel(OS_PRIO_SELF);
 }
-void MainMenuTask(void* pdata)
+void clearOldText()
 {
-	OSTimeDly(100);
+	//clears old crap off the screen
 	alt_u8 i;
-	fillScreen(pixel_buffer, 0x00F0);
-
-	// Init players
-	Player p1 = { SCREEN_WIDTH/4, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2-2, NONE, NONE, NONE };
-	Player p2 = { SCREEN_WIDTH/4*3, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2-2, NONE, NONE, NONE };
-	players[0] = p1;
-	players[1] = p2;
-
 	for(i=2;i<5;i++)
 	{
 		drawText(character_buffer,"                ",0,i);
@@ -628,11 +620,27 @@ void MainMenuTask(void* pdata)
 	drawText(character_buffer, "          ", 42, 29);
 	drawText(character_buffer, "          ", 35, 31);
 	drawText(character_buffer, "          ", 42, 31);
+}
+void MainMenuTask(void* pdata)
+{
+	OSTimeDly(100);
+	alt_u8 i;
+	fillScreen(pixel_buffer, 0x00F0);
+
+	// Init players
+	Player p1 = { SCREEN_WIDTH/4, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2-2, NONE, NONE, NONE };
+	Player p2 = { SCREEN_WIDTH/4*3, SCREEN_HEIGHT-PLAYER_SIZE-PLAYER_SIZE/2-2, NONE, NONE, NONE };
+	players[0] = p1;
+	players[1] = p2;
+
+	clearOldText();
 	drawRect(pixel_buffer,0xFFFF,SCREEN_WIDTH/2-50,SCREEN_HEIGHT/2-12,100,20);
 	drawText(character_buffer,"Press X to start playing",40-12,29);
 	fillRect(pixel_buffer,0xAAAA,SCREEN_WIDTH/2-50,SCREEN_HEIGHT/4-12,100,20);
 	drawText(character_buffer,"SPLITRUNNERS",40-6,14);
 	drawText(character_buffer,"(c) Jerko Lenstra & Rick de Bondt - 2016",40-20,44);
+
+	//Do initialize the controls, otherwise we can't press X
 	OSTaskCreateExt(ControlsTask,
 			0,
 			(void *)&ControlsTask_STK[TASK_STACKSIZE-1],
@@ -643,14 +651,19 @@ void MainMenuTask(void* pdata)
 			NULL,
 			0);
 	alt_u8 pNum;
+
+	//Wait until player 1 presses X
 	while(players[0].action != 2)
 	{
 		OSTimeDly(1);
 
 	}
+	//Clear the main menu text
 	drawText(character_buffer,"                        ",40-12,29);
 	drawText(character_buffer,"            ",40-6,14);
 	drawText(character_buffer,"                                        ",40-20,44);
+
+	//Start creating all the tasks we need for the level
 	OSTaskCreateExt(TimerTask,
 			0,
 			(void *)&TimerTask_STK[TASK_STACKSIZE-1],
@@ -699,6 +712,7 @@ void MainMenuTask(void* pdata)
 			TASK_STACKSIZE,
 			NULL,
 			0);
+	//Put the timer on 0 right before we start
 	ALT_SEM_PEND(timer,0);
 	min = 0;
 	sec = 0;
@@ -717,6 +731,7 @@ void FinishTask(void *pdata)
 	alt_u8 cursorDrawn = 0;
 	alt_8 test = -1;
 
+	//Draw Highscores
 	drawText(character_buffer, highScores[0][0], 3, 2);
 	drawText(character_buffer, highScores[0][1], 10, 2);
 	drawText(character_buffer, highScores[1][0], 3, 3);
@@ -726,12 +741,15 @@ void FinishTask(void *pdata)
 
 	while (1)
 	{
+		//This task will start doing something when both finish flags have been set
 		ALT_FLAG_PEND(finish_flag, FINISH_1 + FINISH_2, OS_FLAG_WAIT_SET_ALL, 0);
 		ALT_SEM_PEND(timer, 0);
 
+		//Delete the players
 		OSTaskDel(PLAYER_PRIORITY);
 		OSTaskDel(PLAYER_PRIORITY+1);
 
+		//Draw the window
 		fillRect(pixel_buffer, BG_COLOR + 1024, 100, 80, 120, 80);
 		drawRect(pixel_buffer, 0, 99, 79, 122, 82);
 		drawRect(pixel_buffer, 0xFFFF, 100, 80, 120, 80);
@@ -739,6 +757,7 @@ void FinishTask(void *pdata)
 		test = checkScore();
 		if (checkScore() >= 0)
 		{
+			//If there is a highscore we tell the player he did it and we ask him to enter his name
 			sprintf(scoreText, "New highscore! %.2d:%.2d!", min, sec);
 			drawText(character_buffer, scoreText, 29, 22);
 			drawText(character_buffer, "Enter your teamname below", 27, 24);
@@ -748,6 +767,7 @@ void FinishTask(void *pdata)
 
 			while (1)
 			{
+				//Character selection
 				OSTimeDly(1);
 				sprintf(name, "%c", tempName[0]);
 				drawText(character_buffer, name, 31, 31);
@@ -786,6 +806,7 @@ void FinishTask(void *pdata)
 				}
 				if (players[0].action == 2)
 				{
+					//When X has been pressed, save the score
 					sprintf(name, tempName);
 					setScore(checkScore(), name, scoresFile_ptr);
 
@@ -812,6 +833,7 @@ void FinishTask(void *pdata)
 				}
 				if (!cursorDrawn)
 				{
+					//Make sure the white rectangle in the high score screen is always drawn
 					fillRect(pixel_buffer, 0, 120, 116, 16, 16);
 					fillRect(pixel_buffer, 0, 152, 116, 16, 16);
 					fillRect(pixel_buffer, 0, 184, 116, 16, 16);
@@ -822,6 +844,7 @@ void FinishTask(void *pdata)
 		}
 		else
 		{
+			//If the player did not reach the high score
 			sprintf(scoreText, "No highscore, try again!", min, sec);
 			drawText(character_buffer, scoreText, 28, 22);
 			drawText(character_buffer, "These are the highscores:", 28, 24);
