@@ -226,7 +226,7 @@ void movePlayer(alt_u8 pNum, alt_u8 dir)
 		}
 		for(i = 20;i<MAX_BUTTONS;i++)
 		{
-			if(buttons[i].coords[0] != 0)
+			if(buttons[i].coords[0] != 0) //also redraw the buttons
 			{
 				drawRect(pixel_buffer,BUTTON_CRATE_COLOR,buttons[i].coords[0]*4,buttons[i].coords[1]*4,BUTTON_SIZE,BUTTON_SIZE);
 			}
@@ -315,8 +315,6 @@ void TimerTask(void *pdata)
 }
 void PlayerTask(void* pdata)
 {
-	//	ALT_SEM_PEND(player, 0);
-
 	alt_u8 pNum = (alt_u8*) pdata;
 
 	// Draw initial playerbox
@@ -324,15 +322,11 @@ void PlayerTask(void* pdata)
 	fillRect(pixel_buffer, PLAYER_COLOR/(pNum+1), players[pNum].x, players[pNum].y, PLAYER_SIZE, PLAYER_SIZE);
 	ALT_SEM_POST(display);
 
-	//	ALT_SEM_POST(player);
 	while(1)
 	{
 		waitForVSync(buffer_register, dma_control);
-		//		OSTimeDly(PLAYER_SPEED);
-		//		OSTimeDly(100);
 		OSTimeDly(20);
-
-		//		ALT_SEM_PEND(player, 0);
+		//move the player when one of the direction buttons is pushed
 		if(players[pNum].yDir == DOWN)
 		{
 			movePlayer(pNum, DOWN);
@@ -340,27 +334,21 @@ void PlayerTask(void* pdata)
 		else if(players[pNum].yDir == UP)
 		{
 			movePlayer(pNum, UP);
-			//			OSTimeDly(1);
 		}
 		if(players[pNum].xDir == RIGHT)
 		{
 			movePlayer(pNum, RIGHT);
-			//			OSTimeDly(1);
 		}
 		else if(players[pNum].xDir == LEFT)
 		{
 			movePlayer(pNum, LEFT);
-			//			OSTimeDly(1);
 		}
-
 
 		// Draw player
 		ALT_SEM_PEND(display, 0);
 		drawRect(pixel_buffer, BG_COLOR, players[pNum].x-1, players[pNum].y-1, PLAYER_SIZE+2, PLAYER_SIZE+2);
 		fillRect(pixel_buffer, PLAYER_COLOR/(pNum+1), players[pNum].x, players[pNum].y, PLAYER_SIZE, PLAYER_SIZE);
 		ALT_SEM_POST(display);
-
-		//		ALT_SEM_POST(player);
 	}
 }
 void ControlsTask(void* pdata)
@@ -416,13 +404,12 @@ void ControlsTask(void* pdata)
 			}
 			if (cmd[0] != 0 && cmd[1] != 0 && cmd[2] != 0)
 			{
-				//				ALT_SEM_PEND(player, 0);
-				pNum = cmd[0] - '0' - 1;
-
+				//parse the console output and tell the program to perform an action based on that
+				pNum = cmd[0] - '0' - 1; //check if it is a command for player 1 or player 2
 				switch(cmd[1])
 				{
-				case 'g':
-					if(cmd[2] != 'r')
+				case 'g': // g = down, h = up, l = left, r= right, 0-9 = buttons
+					if(cmd[2] != 'r') //r = released, p = pressed
 					{
 						if (pNum == 0 || pNum == 1)
 							players[pNum].yDir = DOWN;
@@ -466,7 +453,7 @@ void ControlsTask(void* pdata)
 				case '1':
 				case '2':
 				case '3':
-				case '4':
+				case '4': //in all these cases we perform this action
 					if(cmd[2] != 'r')
 					{
 						action = cmd[1] - '0';
@@ -482,14 +469,10 @@ void ControlsTask(void* pdata)
 				default:
 					break;
 				}
-
-				for (i = 0; i < sizeof(cmd)/sizeof(cmd[0]); i++)
+				for (i = 0; i < sizeof(cmd)/sizeof(cmd[0]); i++) //fill the array with zeroes
 					cmd[i] = 0;
 				i = 0;
-
 			}
-			//			ALT_SEM_POST(player);
-
 		}
 		OSTimeDly(1);
 	}
@@ -502,7 +485,7 @@ void InitLevelTask(void* pdata)
 	short int file = openSDFile(sd_card, "level.txt");
 	short int scoresFile = openSDFile(sd_card, "scores.txt");
 	scoresFile_ptr = &scoresFile;
-
+	//See if we could successfully open the files
 	if(file == -1)
 	{
 		printf("Something unexpected happened\n");
@@ -517,6 +500,7 @@ void InitLevelTask(void* pdata)
 
 	loadScores(scoresFile);
 
+	//clear the screen, wait until that is done and then start parsing the level
 	fillScreen(pixel_buffer, 0x00F0);
 	waitForVSync(buffer_register, dma_control);
 	char pix =  alt_up_sd_card_read(file);
@@ -528,20 +512,20 @@ void InitLevelTask(void* pdata)
 	alt_u8 spikes= 0;
 	while(pix != EOF)
 	{
-		if(pix == '1')
+		if(pix == '1') //if we encountered a wall, make a wall
 		{
 			fillRect(pixel_buffer,WALL_COLOR,count*4,county*4,4,4);
 		}
-		else if(pix == '\n')
+		else if(pix == '\n') //if we encountered a linebreak, add 1 to the y coordinate
 		{
 			county++;
 			count =-1;
 		}
-		else if((pix == '!'||pix == '"') && vert == 0)
+		else if((pix == '!'||pix == '"') && vert == 0) //these are spikes or doors
 		{
-			doortrig[0] = count;
+			doortrig[0] = count; //save the door, because we will need this later, to combine the button with the door
 			doortrig[1] = county;
-			if(pix == '"')
+			if(pix == '"') //are we spikes?
 			{
 				spikes = 1;
 			}
@@ -550,42 +534,41 @@ void InitLevelTask(void* pdata)
 				spikes = 0;
 			}
 		}
-		else if(pix == '#')
+		else if(pix == '#') //we encountered a grate, so draw it
 		{
 			drawRect(pixel_buffer,WALL_CRATE_COLOR,count*4,county*4+1,WALL_SIZE,DOOR_SIZE-2);
 		}
-		else if(pix == '+')
+		else if(pix == '+') //we encountered a box
 		{
 			fillRect(pixel_buffer,CRATE_COLOR,count*4,county*4,PLAYER_SIZE,PLAYER_SIZE);
 			crates[countcrate].coords[0] = count*4;
 			crates[countcrate].coords[1] = county*4;
 		}
 
-
-		if(count -1 == doortrig[0] && county == doortrig[1] && pix != ' ')
+		if(count -1 == doortrig[0] && county == doortrig[1] && pix != ' ') //if we have a door or spike to the left of us, and this spot is not empty, then we are going to make a spike or horizontal door
 		{
-			doors[pix-50].coords[0] = count -1;
+			doors[pix-50].coords[0] = count -1; //save the door into the array
 			doors[pix-50].coords[1] = county;
-			doors[pix-50].vert = 0;
+			doors[pix-50].vert = 0; //the door is not vertical
 			doors[pix-50].spikes = spikes;
 			alt_8 i = 0;
-			if(doors[pix-50].spikes == 1)
+			if(doors[pix-50].spikes == 1) //if we have spikes we draw 8 brown lines
 			{
 				for(i=0;i<8;i++)
 				{
 					drawLine(pixel_buffer,SPIKE_COLOR,(count)*4+i*2-1,(county*4),(count)*4+i*2-1,(county*4)+4);
 				}
 			}
-			else
+			else //otherwise we draw a door
 			{
 				fillRect(pixel_buffer,DOOR_COLOR,(count-1)*4+1,county*4,DOOR_SIZE,WALL_SIZE);
 			}
 		}
-		else if(count-1 == doortrig[0] && county == doortrig[1] && pix == ' ' )
+		else if(count-1 == doortrig[0] && county == doortrig[1] && pix == ' ' ) //if this spot is empty, we have a vertical door
 		{
 			vert = 1;
 		}
-		else if(vert == 1 && count == doortrig[0] && county-1 == doortrig[1] && pix != ' ')
+		else if(vert == 1 && count == doortrig[0] && county-1 == doortrig[1] && pix != ' ') //if the door is vertical, the x value corrosponds with a door and the door is above us, and this spot is not empty, we are going to draw a vertical door
 		{
 			fillRect(pixel_buffer,DOOR_COLOR,(count)*4,(county*4)-3,WALL_SIZE,DOOR_SIZE);
 			doors[pix-50].coords[0] = count;
@@ -593,14 +576,14 @@ void InitLevelTask(void* pdata)
 			doors[pix-50].vert = 1;
 			vert = 0;
 		}
-		else if(pix > '1' && pix < 'F')
+		else if(pix > '1' && pix < 'F') //if the button is between '1' and 'F' in the ascii table, we create a regular button
 		{
 			drawRect(pixel_buffer,BUTTON_COLOR,count*4,county*4,BUTTON_SIZE,BUTTON_SIZE);
 			buttons[pix-50].coords[0] = count;
 			buttons[pix-50].coords[1] = county;
 
 		}
-		else if(pix >= 'F')
+		else if(pix >= 'F') //if it is higher, we create a crate triggered button
 		{
 			drawRect(pixel_buffer,BUTTON_CRATE_COLOR,count*4,county*4,BUTTON_SIZE,BUTTON_SIZE);
 			buttons[pix-50].coords[0] = count;
@@ -608,7 +591,7 @@ void InitLevelTask(void* pdata)
 		}
 
 
-		pix =  alt_up_sd_card_read(file);
+		pix =  alt_up_sd_card_read(file); //read the next character
 		count++;
 	}
 	ALT_SEM_POST(level_sem);
