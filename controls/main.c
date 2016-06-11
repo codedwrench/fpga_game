@@ -99,36 +99,40 @@ alt_u8 moveCrate(alt_u16 x,alt_u8 y,alt_u16 *crateX, alt_u16 *crateY,alt_u8 dir)
 	return 0;
 
 }
+void createDoor(alt_u8 doornumber)
+{
+	alt_u16 doorX;
+	alt_u8 doorY;
+	doorX = doors[doornumber].coords[0]*4;
+	doorY = doors[doornumber].coords[1]*4;
+	if(doors[doornumber].vert) //Draw door vertically
+		fillRect(pixel_buffer,BG_COLOR,doorX,doorY+1,WALL_SIZE,DOOR_SIZE-2);
+	else //Draw door horizontally
+		fillRect(pixel_buffer,BG_COLOR,doorX+1,doorY,DOOR_SIZE,WALL_SIZE);
+}
 void handleCollisions(alt_u16 x, alt_u8 y,alt_u8 dir, alt_u8 pNum, alt_u8 *willCollide)
 {
 	alt_u8 i;
 	alt_u16 buttonX;
 	alt_u8 buttonY;
-	alt_u16 doorX;
-	alt_u8 doorY;
 	alt_u16 *crateX;
 	alt_u16 *crateY;
 	alt_u16 collisionColor= getPixel(pixel_buffer,x,y);
-	if (checkWallAndDoor(x,y)||collisionColor == WALL_CRATE_COLOR) //player bumped against a wall or door
+	if (checkWallAndDoor(x,y)||collisionColor == WALL_CRATE_COLOR) //player bumped against a wall, door or grate
 	{
 		*willCollide = 1;
 	}
 	else if (collisionColor == BUTTON_COLOR) //player has stepped on a button
 	{
 		*willCollide = 0; //player does not hit the button
-		for(i = 0;i<MAX_BUTTONS;i++)
+		for(i = 0;i<MAX_BUTTONS;i++) //check for all buttons if the player stepped on it
 		{
-			buttonX = buttons[i].coords[0]*4;
+			buttonX = buttons[i].coords[0]*4; //readability
 			buttonY = buttons[i].coords[1]*4;
-			doorX = doors[i].coords[0]*4;
-			doorY = doors[i].coords[1]*4;
 			if(getArea(x,y,BUTTON_SIZE,BUTTON_SIZE,buttonX,buttonY)) //if the player is on the button
 			{
 				drawRect(pixel_buffer,BG_COLOR,buttonX,buttonY,BUTTON_SIZE,BUTTON_SIZE); //Remove Button
-				if(doors[i].vert) //Draw door vertically
-					fillRect(pixel_buffer,BG_COLOR,doorX,doorY+1,WALL_SIZE,DOOR_SIZE-2);
-				else //Draw door horizontally
-					fillRect(pixel_buffer,BG_COLOR,doorX+1,doorY,DOOR_SIZE,WALL_SIZE);
+				createDoor(i);
 				break;
 			}
 		}
@@ -145,14 +149,12 @@ void handleCollisions(alt_u16 x, alt_u8 y,alt_u8 dir, alt_u8 pNum, alt_u8 *willC
 			{
 				buttonX = buttons[cnt].coords[0]*4;
 				buttonY = buttons[cnt].coords[1]*4;
-				if(*crateX >= buttonX - BUTTON_SIZE && crates[i].coords[0] <= buttons[cnt].coords[0]*4 + 4 && crates[i].coords[1] >= buttons[cnt].coords[1]*4-4 && crates[i].coords[1] <= buttons[cnt].coords[1]*4+4)
+				//if(*crateX >= buttonX - BUTTON_SIZE && *crateX <= *buttonY + 4 && *crateY >= *buttonY-4 && *crateY <= *buttonY+4)
+				if(getArea(*crateX,*crateY,BUTTON_SIZE,BUTTON_SIZE,buttonX,buttonY))
 				{
-					buttons[cnt].coords[0]= 0;
-					fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-					if(doors[cnt].vert)
-						fillRect(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4,(doors[cnt].coords[1]*4)+1,WALL_SIZE,DOOR_SIZE-2);
-					else
-						fillRect(pixel_buffer,BG_COLOR,doors[cnt].coords[0]*4+1,doors[cnt].coords[1]*4,DOOR_SIZE,WALL_SIZE);
+					buttons[cnt].coords[0]= 0; //i can't change this through the variable, as it is not a pointer
+					fillRect(pixel_buffer,CRATE_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE); //draw the crate first, so it won't get behind stuff
+					createDoor(cnt);
 				}
 			}
 		}
@@ -163,7 +165,7 @@ void handleCollisions(alt_u16 x, alt_u8 y,alt_u8 dir, alt_u8 pNum, alt_u8 *willC
 	}
 	else if (collisionColor == 0)
 	{
-		*willCollide = 1;
+		*willCollide = 1; //if the player hits the timer, set the player's finish flag and collide
 		if (pNum == 0)
 			ALT_FLAG_POST(finish_flag, FINISH_1, OS_FLAG_SET);
 		else if (pNum == 1)
