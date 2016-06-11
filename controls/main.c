@@ -174,12 +174,12 @@ void handleCollisions(alt_u16 x, alt_u8 y,alt_u8 dir, alt_u8 pNum, alt_u8 *willC
 	}
 
 }
-
 void movePlayer(alt_u8 pNum, alt_u8 dir)
 {
 	alt_u8 willCollide = 0;
 	alt_8 btnPressed = -1;
 	alt_u16 x, y, p, p0, p1;
+	p0 = 0; //make sure p0 is not used unitialized
 	alt_u8 i =0;
 
 	switch(dir)
