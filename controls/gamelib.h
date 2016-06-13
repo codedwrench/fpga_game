@@ -22,7 +22,7 @@
 #define PLAYER_SPEED 5 				// OSTimeDly in player ask
 #define MAX_BUTTONS 30
 #define MAX_DOORS 30
-#define MAX_CRATES 1
+#define MAX_CRATES 5
 
 typedef struct Player {
 	alt_u16 x, y;

@@ -120,6 +120,7 @@ void InitLevelTask(void* pdata)
 			fillRect(pixel_buffer,CRATE_COLOR,count*4,county*4,PLAYER_SIZE,PLAYER_SIZE);
 			crates[countcrate].coords[0] = count*4;
 			crates[countcrate].coords[1] = county*4;
+			countcrate++;
 		}
 
 		if(count -1 == doortrig[0] && county == doortrig[1] && pix != ' ') //if we have a door or spike to the left of us, and this spot is not empty, then we are going to make a spike or horizontal door
