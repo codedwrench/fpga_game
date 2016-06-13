@@ -1,8 +1,16 @@
 import pygame
 import time
-
+import os
 from subprocess import Popen, PIPE
-process = Popen(["C:\\altera_lite\\15.1\\quartus\\bin64\\nios-monitor-terminal.exe","1","0"],stdin=PIPE)
+if(os.path.isfile("path.txt")):
+    txt = open("path.txt",'r+')
+    procstring = txt.readline()
+else:
+    txt = open("path.txt",'a')
+    procstring = str(raw_input("Please enter the nios-monitor-terminal path\n"))
+    txt.write(procstring)
+txt.close()
+process = Popen([procstring,"1","0"],stdin=PIPE)
 pygame.init()
 pygame.joystick.init()
 joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
