@@ -13,12 +13,19 @@
 #include "graphicslib.h"
 #include "gamelib.h"
 #include "scores.h"
+#include "player.h"
+#include "collisions.h"
 #include <Altera_UP_SD_Card_Avalon_Interface.h>
 #include "address_map_nios2.h"
 
-//Finish Flag definitions
+//Semaphores and Flags
 #define FINISH_1 0x01
 #define FINISH_2 0x02
+extern OS_FLAG_GRP* finish_flag;
+extern OS_EVENT* display;
+extern OS_EVENT* button;
+extern OS_EVENT* level_sem;
+extern OS_EVENT* timer;
 
 //Stack definitions
 #define TASK_STACKSIZE              2048
@@ -54,12 +61,7 @@ extern char highScores[3][2][6];
 extern short int* scoresFile_ptr;
 
 //Function definitions
-alt_u8 getArea(alt_u16 x, alt_u8 y,alt_u8 w,alt_u8 h, alt_u16 collisionX,alt_u8 collisionY);
-alt_u8 checkWallAndDoor(alt_u16 x,alt_u8 y);
-alt_u8 moveCrate(alt_u16 x,alt_u8 y,alt_u16 *crateX, alt_u16 *crateY,alt_u8 dir);
 void clearOldText();
-void createDoor(alt_u8 doornumber);
-void handleCollisions(alt_u16 x, alt_u8 y,alt_u8 dir, alt_u8 pNum, alt_u8 *willCollide);
 void movePlayer(alt_u8 pNum, alt_u8 dir);
 short int openSDFile(alt_up_sd_card_dev* sd_card, char name[]);
 

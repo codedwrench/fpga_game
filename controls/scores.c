@@ -37,7 +37,7 @@ void setInitScore(short int* file) //This function initializes the scores file t
 	if(err)
 		printf("Couldn't save file to SD card");
 }
-void setScore(alt_8 pos, alt_u8 name[], short int* f)
+void setScore(alt_8 pos, char name[], short int* f)
 {
 	alt_u8 err = 0;
 	switch(pos)
@@ -75,7 +75,7 @@ alt_8 checkScore()
 {
 	alt_u8 i, j;
 	alt_8 result = -1;
-	alt_u8 score[6] = { 0 };
+	char score[6] = { 0 };
 	sprintf(score, "%.2d:%.2d", min, sec);
 	for (i = 0; i < 3; i++)
 	{
@@ -145,4 +145,41 @@ void addPenalty(alt_u8 n,OS_EVENT * timer)
 		min = (min + 1) % 60;
 	}
 	ALT_SEM_POST(timer);
+}
+void DrawTimerTask(void *pdata)
+{
+	char timerStr[6];
+	// Clear char buffer
+	sprintf(timerStr, "         ");
+	drawText(character_buffer, timerStr, 36, 2);
+
+	// Draw timer background
+	ALT_SEM_PEND(display, 0);
+	fillRect(pixel_buffer, 0, 145, 5, 30, 8);
+	ALT_SEM_POST(display);
+
+	while (1)
+	{
+		ALT_SEM_PEND(timer, 0);
+		sprintf(timerStr, "%.2d:%.2d", min, sec);
+		drawText(character_buffer, timerStr, 37, 2);
+		ALT_SEM_POST(timer);
+		OSTimeDly(100);
+	}
+}
+void TimerTask(void *pdata)
+{
+	min = sec = 0;
+	while (1)
+	{
+		ALT_SEM_PEND(timer, 0);
+		sec++;
+		if (sec > 59)
+		{
+			sec = 0;
+			min = (min + 1) % 60;
+		}
+		ALT_SEM_POST(timer);
+		OSTimeDlyHMSM(0, 0, 1, 0);
+	}
 }

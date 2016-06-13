@@ -18,7 +18,6 @@ OS_STK MainMenuTask_STK[TASK_STACKSIZE];
 
 //Semaphores and Flags
 ALT_SEM(display)
-ALT_SEM(audio)
 ALT_SEM(player)
 ALT_SEM(button)
 ALT_SEM(level_sem)
@@ -34,227 +33,6 @@ Player players[MAX_PLAYERS];
 //Timer
 alt_u8 sec, min;
 
-alt_u8 getArea(alt_u16 x, alt_u8 y,alt_u8 w,alt_u8 h, alt_u16 collisionX,alt_u8 collisionY)
-{
-	if(collisionX <= x+1 && collisionX >= x-w && collisionY <= y && collisionY >= y-h)
-	{
-		return 1;
-	}
-	return 0;
-}
-alt_u8 checkWallAndDoor(alt_u16 x,alt_u8 y)
-{
-	if(getPixel(pixel_buffer,x,y) == WALL_COLOR ||getPixel(pixel_buffer,x,y) == DOOR_COLOR)
-		return 1;
-	return 0;
-}
-alt_u8 moveCrate(alt_u16 x,alt_u8 y,alt_u16 *crateX, alt_u16 *crateY,alt_u8 dir)
-{
-	if(*crateX == x && dir == RIGHT && !checkWallAndDoor(*crateX + PLAYER_SIZE+1,*crateY))//player is left of crate
-	{
-		if(getPixel(pixel_buffer,*crateX+PLAYER_SIZE+1,*crateY) == WALL_CRATE_COLOR) //teleport the box if it hits a grate
-		{
-			fillRect(pixel_buffer,BG_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE); //remove the crate from te old position
-			*crateX += 17;
-			fillRect(pixel_buffer,CRATE_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE); //redraw it at the new position
-		}
-		else //otherwise just draw it one pixel further
-		{
-			fillRect(pixel_buffer,BG_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE);
-			fillRect(pixel_buffer,CRATE_COLOR,*crateX+1,*crateY,PLAYER_SIZE,PLAYER_SIZE);
-			*crateX += 1;
-		}
-	}
-	else if(*crateX+PLAYER_SIZE==x && dir == LEFT && !checkWallAndDoor(*crateX-1,*crateY))//player is right of crate
-	{
-		if(getPixel(pixel_buffer,*crateX-1,*crateY) ==  WALL_CRATE_COLOR) //same as before but the other way around
-		{
-			fillRect(pixel_buffer,BG_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE);
-			*crateX -= 17;
-			fillRect(pixel_buffer,CRATE_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE);
-		}
-		else
-		{
-			fillRect(pixel_buffer,BG_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE);
-			fillRect(pixel_buffer,CRATE_COLOR,*crateX-1,*crateY,PLAYER_SIZE,PLAYER_SIZE);
-			*crateX -= 1;
-		}
-	}
-	else if(*crateY == y && dir == DOWN && !checkWallAndDoor(*crateX,*crateY + PLAYER_SIZE + 1))//player is above crate
-	{
-		fillRect(pixel_buffer,BG_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE); //remove the old crate
-		fillRect(pixel_buffer,CRATE_COLOR,*crateX,*crateY+1,PLAYER_SIZE,PLAYER_SIZE); //place new crate 1 lower
-		*crateY+= 1;
-	}
-	else if(*crateY + PLAYER_SIZE == y && dir == UP && !checkWallAndDoor(*crateX,*crateY-1))//player is below crate
-	{
-		fillRect(pixel_buffer,BG_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE); //remove the old crate
-		fillRect(pixel_buffer,CRATE_COLOR,*crateX,*crateY-1,PLAYER_SIZE,PLAYER_SIZE);
-		*crateY -= 1;
-	}
-	else
-	{
-		return 1;
-	}
-	return 0;
-
-}
-void createDoor(alt_u8 doornumber)
-{
-	alt_u16 doorX;
-	alt_u8 doorY;
-	doorX = doors[doornumber].coords[0]*4;
-	doorY = doors[doornumber].coords[1]*4;
-	if(doors[doornumber].vert) //Draw door vertically
-		fillRect(pixel_buffer,BG_COLOR,doorX,doorY+1,WALL_SIZE,DOOR_SIZE-2);
-	else //Draw door horizontally
-		fillRect(pixel_buffer,BG_COLOR,doorX+1,doorY,DOOR_SIZE,WALL_SIZE);
-}
-void handleCollisions(alt_u16 x, alt_u8 y,alt_u8 dir, alt_u8 pNum, alt_u8 *willCollide)
-{
-	alt_u8 i;
-	alt_u16 buttonX;
-	alt_u8 buttonY;
-	alt_u16 *crateX;
-	alt_u16 *crateY;
-	alt_u16 collisionColor= getPixel(pixel_buffer,x,y);
-	if (checkWallAndDoor(x,y)||collisionColor == WALL_CRATE_COLOR) //player bumped against a wall, door or grate
-	{
-		*willCollide = 1;
-	}
-	else if (collisionColor == BUTTON_COLOR) //player has stepped on a button
-	{
-		*willCollide = 0; //player does not hit the button
-		for(i = 0;i<MAX_BUTTONS;i++) //check for all buttons if the player stepped on it
-		{
-			buttonX = buttons[i].coords[0]*4; //readability
-			buttonY = buttons[i].coords[1]*4;
-			if(getArea(x,y,BUTTON_SIZE,BUTTON_SIZE,buttonX,buttonY)) //if the player is on the button
-			{
-				drawRect(pixel_buffer,BG_COLOR,buttonX,buttonY,BUTTON_SIZE,BUTTON_SIZE); //Remove Button
-				createDoor(i);
-				break;
-			}
-		}
-	}
-	else if (getPixel(pixel_buffer,x,y) == CRATE_COLOR)
-	{
-		for(i =0;i<MAX_CRATES;i++)
-		{
-			crateX = &crates[i].coords[0];
-			crateY = &crates[i].coords[1];
-			*willCollide = moveCrate(x,y,crateX,crateY,dir);
-			alt_u8 cnt;
-			for(cnt = 0; cnt < MAX_BUTTONS;cnt++)
-			{
-				buttonX = buttons[cnt].coords[0]*4;
-				buttonY = buttons[cnt].coords[1]*4;
-				//if(*crateX >= buttonX - BUTTON_SIZE && *crateX <= *buttonY + 4 && *crateY >= *buttonY-4 && *crateY <= *buttonY+4)
-				if(getArea(*crateX,*crateY,BUTTON_SIZE,BUTTON_SIZE,buttonX,buttonY))
-				{
-					buttons[cnt].coords[0]= 0; //i can't change this through the variable, as it is not a pointer
-					fillRect(pixel_buffer,CRATE_COLOR,*crateX,*crateY,PLAYER_SIZE,PLAYER_SIZE); //draw the crate first, so it won't get behind stuff
-					createDoor(cnt);
-				}
-			}
-		}
-	}
-	else if(collisionColor == SPIKE_COLOR)
-	{
-		addPenalty(2,timer);
-	}
-	else if (collisionColor == 0)
-	{
-		*willCollide = 1; //if the player hits the timer, set the player's finish flag and collide
-		if (pNum == 0)
-			ALT_FLAG_POST(finish_flag, FINISH_1, OS_FLAG_SET);
-		else if (pNum == 1)
-			ALT_FLAG_POST(finish_flag, FINISH_2, OS_FLAG_SET);
-
-	}
-
-}
-void movePlayer(alt_u8 pNum, alt_u8 dir)
-{
-	alt_u8 willCollide = 0;
-	alt_8 btnPressed = -1;
-	alt_u16 x, y, p, p0, p1;
-	p0 = 0; //make sure p0 is not used unitialized
-	alt_u8 i =0;
-
-	switch(dir)
-	{
-	case DOWN:
-		p0 = players[pNum].x -1;
-		p1 = players[pNum].x +PLAYER_SIZE +2;
-		x = p0;
-		y = players[pNum].y +PLAYER_SIZE +2;
-		break;
-	case UP:
-		p0 = players[pNum].x -1;
-		p1 = players[pNum].x +PLAYER_SIZE +2;
-		x = p0;
-		y = players[pNum].y -2;
-		break;
-	case LEFT:
-		p0 = players[pNum].y -1;
-		p1 = players[pNum].y +PLAYER_SIZE +2;
-		x = players[pNum].x -2;
-		y = p0;
-		break;
-	case RIGHT:
-		p0 = players[pNum].y -1;
-		p1 = players[pNum].y +PLAYER_SIZE +2;
-		x = players[pNum].x +PLAYER_SIZE +2;
-		y = p0;
-		break;
-	default:
-		break;
-	}
-	for (p = p0; p < p1; p++) //Do this for every X or Y value , depending on the direction
-	{
-		if (dir == UP || dir == DOWN) //Put p in X or Y depending on the direction
-			x = p;
-		else if (dir == LEFT || dir == RIGHT)
-			y = p;
-
-		handleCollisions(x,y,dir,pNum,&willCollide);
-
-		for(i = 0;i<MAX_CRATES;i++) //redraw crates and button if player moves
-		{
-			fillRect(pixel_buffer,CRATE_COLOR,crates[i].coords[0],crates[i].coords[1],PLAYER_SIZE,PLAYER_SIZE);
-		}
-		for(i = 20;i<MAX_BUTTONS;i++)
-		{
-			if(buttons[i].coords[0] != 0) //also redraw the buttons
-			{
-				drawRect(pixel_buffer,BUTTON_CRATE_COLOR,buttons[i].coords[0]*4,buttons[i].coords[1]*4,BUTTON_SIZE,BUTTON_SIZE);
-			}
-		}
-		if (willCollide || btnPressed >= 0)
-			break;
-	}
-	if (!willCollide) //actually move the player
-	{
-		switch(dir)
-		{
-		case UP:
-			players[pNum].y--;
-			break;
-		case DOWN:
-			players[pNum].y++;
-			break;
-		case LEFT:
-			players[pNum].x--;
-			break;
-		case RIGHT:
-			players[pNum].x++;
-			break;
-		default:
-			break;
-		}
-	}
-}
 short int openSDFile(alt_up_sd_card_dev* sd_card, char name[])
 {
 	if (sd_card!=NULL){
@@ -275,207 +53,6 @@ short int openSDFile(alt_up_sd_card_dev* sd_card, char name[])
 		}
 	}
 	return alt_up_sd_card_fopen(name,0);
-}
-void DrawTimerTask(void *pdata)
-{
-	char timerStr[6];
-	// Clear char buffer
-	sprintf(timerStr, "         ");
-	drawText(character_buffer, timerStr, 36, 2);
-
-	// Draw timer background
-	ALT_SEM_PEND(display, 0);
-	fillRect(pixel_buffer, 0, 145, 5, 30, 8);
-	ALT_SEM_POST(display);
-
-	while (1)
-	{
-		ALT_SEM_PEND(timer, 0);
-		sprintf(timerStr, "%.2d:%.2d", min, sec);
-		drawText(character_buffer, timerStr, 37, 2);
-		ALT_SEM_POST(timer);
-		OSTimeDly(100);
-	}
-}
-void TimerTask(void *pdata)
-{
-	min = sec = 0;
-	while (1)
-	{
-		ALT_SEM_PEND(timer, 0);
-		sec++;
-		if (sec > 59)
-		{
-			sec = 0;
-			min = (min + 1) % 60;
-		}
-		ALT_SEM_POST(timer);
-		OSTimeDlyHMSM(0, 0, 1, 0);
-	}
-}
-void PlayerTask(void* pdata)
-{
-	alt_u8 pNum = (alt_u8*) pdata;
-
-	// Draw initial playerbox
-	ALT_SEM_PEND(display, 0);
-	fillRect(pixel_buffer, PLAYER_COLOR/(pNum+1), players[pNum].x, players[pNum].y, PLAYER_SIZE, PLAYER_SIZE);
-	ALT_SEM_POST(display);
-
-	while(1)
-	{
-		waitForVSync(buffer_register, dma_control);
-		OSTimeDly(20);
-		//move the player when one of the direction buttons is pushed
-		if(players[pNum].yDir == DOWN)
-		{
-			movePlayer(pNum, DOWN);
-		}
-		else if(players[pNum].yDir == UP)
-		{
-			movePlayer(pNum, UP);
-		}
-		if(players[pNum].xDir == RIGHT)
-		{
-			movePlayer(pNum, RIGHT);
-		}
-		else if(players[pNum].xDir == LEFT)
-		{
-			movePlayer(pNum, LEFT);
-		}
-
-		// Draw player
-		ALT_SEM_PEND(display, 0);
-		drawRect(pixel_buffer, BG_COLOR, players[pNum].x-1, players[pNum].y-1, PLAYER_SIZE+2, PLAYER_SIZE+2);
-		fillRect(pixel_buffer, PLAYER_COLOR/(pNum+1), players[pNum].x, players[pNum].y, PLAYER_SIZE, PLAYER_SIZE);
-		ALT_SEM_POST(display);
-	}
-}
-void ControlsTask(void* pdata)
-{
-	int data, i;
-	char cmd[3];
-	alt_u8 pNum;
-	alt_8 action;
-
-	for (i = 0; i < sizeof(cmd)/sizeof(cmd[0]); i++)
-		cmd[i] = 0;
-	i = 0;
-
-	/* read and echo characters */
-	while(1)
-	{
-		data = *(JTAG_UART_ptr);		 		// read the JTAG_UART data register
-		if (data & 0x00008000)					// check RVALID to see if there is new data
-		{
-			data = data & 0x000000FF;			// the data is in the least significant byte
-			/* echo the character */
-
-			while ((char) data == '1' || (char) data == '2')
-			{
-				OSTimeDly(1);
-
-				cmd[0] = data;
-				data = *(JTAG_UART_ptr);		 		// read the JTAG_UART data register
-				if (data & 0x00008000)					// check RVALID to see if there is new data
-				{
-					data = data & 0x000000FF;			// the data is in the least significant byte
-					while (1)
-					{
-						OSTimeDly(1);
-
-						cmd[1] = data;
-						data = *(JTAG_UART_ptr);		 		// read the JTAG_UART data register
-						if (data & 0x00008000)					// check RVALID to see if there is new data
-						{
-							data = data & 0x000000FF;			// the data is in the least significant byte
-							while ((char) data == 'r' || (char) data == 'p')
-							{
-								OSTimeDly(1);
-
-								cmd[2] = data;
-								break;
-							}
-						}
-						break;
-					}
-				}
-				break;
-			}
-			if (cmd[0] != 0 && cmd[1] != 0 && cmd[2] != 0)
-			{
-				//parse the console output and tell the program to perform an action based on that
-				pNum = cmd[0] - '0' - 1; //check if it is a command for player 1 or player 2
-				switch(cmd[1])
-				{
-				case 'g': // g = down, h = up, l = left, r= right, 0-9 = buttons
-					if(cmd[2] != 'r') //r = released, p = pressed
-					{
-						if (pNum == 0 || pNum == 1)
-							players[pNum].yDir = DOWN;
-					}
-					else
-						if (pNum == 0 || pNum == 1)
-							players[pNum].yDir = NONE;
-					break;
-				case 'h':
-					if(cmd[2] != 'r')
-					{
-						if (pNum == 0 || pNum == 1)
-							players[pNum].yDir = UP;
-					}
-					else
-						if (pNum == 0 || pNum == 1)
-							players[pNum].yDir = NONE;
-					break;
-				case 'l':
-					if(cmd[2] != 'r')
-					{
-						if (pNum == 0 || pNum == 1)
-							players[pNum].xDir = LEFT;
-					}
-					else
-						if (pNum == 0 || pNum == 1)
-							players[pNum].xDir = NONE;
-					break;
-				case 'r':
-					if(cmd[2] != 'r')
-					{
-						if (pNum == 0 || pNum == 1)
-							players[pNum].xDir = RIGHT;
-					}
-					else
-					{
-						if (pNum == 0 || pNum == 1)
-							players[pNum].xDir = NONE;
-					}
-					break;
-				case '1':
-				case '2':
-				case '3':
-				case '4': //in all these cases we perform this action
-					if(cmd[2] != 'r')
-					{
-						action = cmd[1] - '0';
-						if (pNum == 0 || pNum == 1)
-							players[pNum].action = action;
-					}
-					else
-					{
-						if (pNum == 0 || pNum == 1)
-							players[pNum].action = -1;
-					}
-					break;
-				default:
-					break;
-				}
-				for (i = 0; i < sizeof(cmd)/sizeof(cmd[0]); i++) //fill the array with zeroes
-					cmd[i] = 0;
-				i = 0;
-			}
-		}
-		OSTimeDly(1);
-	}
 }
 void InitLevelTask(void* pdata)
 {
@@ -624,7 +201,6 @@ void clearOldText()
 void MainMenuTask(void* pdata)
 {
 	OSTimeDly(100);
-	alt_u8 i;
 	fillScreen(pixel_buffer, 0x00F0);
 
 	// Init players
@@ -650,7 +226,7 @@ void MainMenuTask(void* pdata)
 			TASK_STACKSIZE,
 			NULL,
 			0);
-	alt_u8 pNum;
+	int pNum;
 
 	//Wait until player 1 presses X
 	while(players[0].action != 2)
@@ -676,7 +252,7 @@ void MainMenuTask(void* pdata)
 	for (pNum = 0; pNum < MAX_PLAYERS; pNum++)
 	{
 		OSTaskCreateExt(PlayerTask,
-				pNum,
+				(void *)pNum,
 				(void *)&PlayerTask_STK[pNum][TASK_STACKSIZE-1],
 				PLAYER_PRIORITY + pNum,
 				PLAYER_PRIORITY + pNum,
@@ -723,13 +299,12 @@ void MainMenuTask(void* pdata)
 }
 void FinishTask(void *pdata)
 {
-	alt_u8 tempName[4] = { 0 };
+	char tempName[4] = { 0 };
 	sprintf(tempName, "AAA");
-	alt_u8 name[4] = { 0 };
-	alt_u8 scoreText[22] = { 0 };
+	char name[4] = { 0 };
+	char scoreText[22] = { 0 };
 	alt_u8 cursorPos = 0;
 	alt_u8 cursorDrawn = 0;
-	alt_8 test = -1;
 
 	//Draw Highscores
 	drawText(character_buffer, highScores[0][0], 3, 2);
@@ -754,7 +329,6 @@ void FinishTask(void *pdata)
 		drawRect(pixel_buffer, 0, 99, 79, 122, 82);
 		drawRect(pixel_buffer, 0xFFFF, 100, 80, 120, 80);
 
-		test = checkScore();
 		if (checkScore() >= 0)
 		{
 			//If there is a highscore we tell the player he did it and we ask him to enter his name
@@ -845,7 +419,7 @@ void FinishTask(void *pdata)
 		else
 		{
 			//If the player did not reach the high score
-			sprintf(scoreText, "No highscore, try again!", min, sec);
+			sprintf(scoreText, "No highscore, try again!");
 			drawText(character_buffer, scoreText, 28, 22);
 			drawText(character_buffer, "These are the highscores:", 28, 24);
 			drawText(character_buffer, highScores[0][0], 35, 27);
@@ -891,9 +465,6 @@ int main (void)
 	OSInit();
 
 	int err = ALT_SEM_CREATE(&display, 1);
-	if(err != 0)
-		printf("Semaphore not created\n");
-	err = ALT_SEM_CREATE(&audio, 1);
 	if(err != 0)
 		printf("Semaphore not created\n");
 	err = ALT_SEM_CREATE(&player, 1);
